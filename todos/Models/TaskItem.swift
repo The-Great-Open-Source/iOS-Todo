@@ -31,19 +31,22 @@ struct TaskItem: Identifiable, Codable, Equatable {
     var completedAt: Date?
     var createdAt = Date()
     var order: Int
+    /// Starred tasks always sit above the rest of their list.
+    var isStarred = false
 
     func isArchived(at date: Date) -> Bool {
         isCompleted && completedAt.map { date.timeIntervalSince($0) >= 600 } == true
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, category, isCompleted, completedAt, createdAt, order
+        case id, title, category, isCompleted, completedAt, createdAt, order, isStarred
     }
 
-    init(title: String, category: TaskCategory, order: Int) {
+    init(title: String, category: TaskCategory, order: Int, isStarred: Bool = false) {
         self.title = title
         self.category = category
         self.order = order
+        self.isStarred = isStarred
     }
 
     init(from decoder: Decoder) throws {
@@ -55,6 +58,8 @@ struct TaskItem: Identifiable, Codable, Equatable {
         completedAt = try values.decodeIfPresent(Date.self, forKey: .completedAt)
         createdAt = try values.decode(Date.self, forKey: .createdAt)
         order = try values.decode(Int.self, forKey: .order)
+        // Files saved before stars existed have no such key.
+        isStarred = try values.decodeIfPresent(Bool.self, forKey: .isStarred) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -66,5 +71,6 @@ struct TaskItem: Identifiable, Codable, Equatable {
         try values.encodeIfPresent(completedAt, forKey: .completedAt)
         try values.encode(createdAt, forKey: .createdAt)
         try values.encode(order, forKey: .order)
+        try values.encode(isStarred, forKey: .isStarred)
     }
 }
