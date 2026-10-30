@@ -10,6 +10,7 @@ A small, native SwiftUI checklist for iPhone built around Liquid Glass. Tasks li
 
 **Tasks**
 - Add, edit, complete, reopen, reorder, and remove tasks. Tap a title to edit it.
+- Star a task when you add it, or later from its touch-and-hold menu or by tapping its star. Starred tasks always stay at the top of their list; completed tasks still move below the open ones.
 - Touch and hold a tile for Edit or Remove, or use Delete Task in the editor. Removal offers Undo for a few seconds.
 - Completed tasks leave the list after 10 minutes and stay available under **Task options → Completed tasks**, where any of them can be reopened. Today never resets at midnight.
 - A new installation starts with four editable starter tasks.

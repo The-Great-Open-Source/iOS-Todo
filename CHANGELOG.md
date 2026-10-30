@@ -5,6 +5,7 @@ All notable changes to this project are documented here. The format follows [Kee
 ## [Unreleased]
 
 ### Added
+- Star a task, either when adding it or later from its touch-and-hold menu or by tapping the star on its tile. Starred tasks always stay at the top of their list. Saved tasks from earlier versions load unstarred.
 - A **+** button in the header, left of the options button, opens a quick new-category sheet: type a name and press return, or tap a suggestion. It previews the icon as you type, stays open so several categories can be added in a row, and jumps to the newest one when you finish.
 
 ### Changed
