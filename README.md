@@ -16,6 +16,7 @@ A small, native SwiftUI checklist for iPhone built around Liquid Glass. Tasks li
 
 **Categories**
 - Every category is a tab. The strip scrolls sideways when there are many, names truncate to one line, and the selected tab stays centred. Swipe sideways anywhere over the list to move to the next or previous tab, for any number of categories; the page follows your finger, and the strip and background follow the page.
+- Tap **+** in the header to make categories quickly: type a name and press return, or tap a suggestion such as Shopping or Health. The icon it will get shows as you type, the sheet stays open to add several in a row, and Done jumps to the newest one.
 - Starring up to three categories lists them first; the rest follow.
 - New categories get an SF Symbol suggested from the name (Groceries gets a cart, Gym a dumbbell), or a letter badge when no keyword matches.
 - Each category tints the background; changing tabs sweeps the colour across.
@@ -77,6 +78,7 @@ todos/
     TaskRow.swift            Task tile, bead checkbox, category tab strip
     TaskEditor.swift         Add and edit
     CategoryManager.swift    Star, add, rename, remove categories
+    QuickCategorySheet.swift Fast new-category sheet with suggestions
     CompletionCelebration.swift  Milestone card and confetti
     CompletedTasksView.swift     Reopen completed tasks
     SettingsView.swift       Appearance, completed visibility, haptics, sounds

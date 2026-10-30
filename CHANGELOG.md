@@ -4,6 +4,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+- A **+** button in the header, left of the options button, opens a quick new-category sheet: type a name and press return, or tap a suggestion. It previews the icon as you type, stays open so several categories can be added in a row, and jumps to the newest one when you finish.
+
 ### Changed
 - Tabs are now a real pager: swipe sideways anywhere over the list to move to the next or previous tab, for any number of categories. The page follows your finger, and the tab strip and background follow the page. Previously swiping only worked over the title area and empty lists.
 
