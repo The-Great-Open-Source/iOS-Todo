@@ -2,6 +2,14 @@
 
 All notable changes to this project are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Changed
+- Tabs are now a real pager: swipe sideways anywhere over the list to move to the next or previous tab, for any number of categories. The page follows your finger, and the tab strip and background follow the page. Previously swiping only worked over the title area and empty lists.
+
+### Removed
+- Swiping a task tile to reveal Edit and Remove, because it competes with the sideways swipe between tabs. Edit and Remove remain on touch and hold, in the editor, and as VoiceOver actions.
+
 ## [0.1.0] - 2026-10-30
 
 First release.
@@ -23,8 +31,9 @@ First release.
 
 ### Known limitations
 - Requires Xcode 27 and an iOS 27 deployment target to build; there is no pre-built binary.
-- Swiping tabs is only available over the title area and empty lists, because task tiles own the sideways swipe.
+- Swiping tabs is only available over the title area and empty lists, because task tiles own the sideways swipe. (Fixed after this release.)
 - No iCloud sync, widgets, or reminders.
 - Gestures, haptics, VoiceOver, and larger text sizes have had limited hands-on testing; the task logic is covered by the automated checks.
 
+[Unreleased]: https://github.com/The-Great-Open-Source/iOS-Todo/compare/v0.1.0...HEAD
 [0.1.0]: https://github.com/The-Great-Open-Source/iOS-Todo/releases/tag/v0.1.0

@@ -10,12 +10,12 @@ A small, native SwiftUI checklist for iPhone built around Liquid Glass. Tasks li
 
 **Tasks**
 - Add, edit, complete, reopen, reorder, and remove tasks. Tap a title to edit it.
-- Swipe a tile right to left: a short pull reveals Edit and Remove, a long pull removes it. Removal offers Undo for a few seconds.
+- Touch and hold a tile for Edit or Remove, or use Delete Task in the editor. Removal offers Undo for a few seconds.
 - Completed tasks leave the list after 10 minutes and stay available under **Task options → Completed tasks**, where any of them can be reopened. Today never resets at midnight.
 - A new installation starts with four editable starter tasks.
 
 **Categories**
-- Every category is a tab. The strip scrolls sideways when there are many, names truncate to one line, and the selected tab stays centred. Drag over the title area, or an empty list, to move between tabs.
+- Every category is a tab. The strip scrolls sideways when there are many, names truncate to one line, and the selected tab stays centred. Swipe sideways anywhere over the list to move to the next or previous tab, for any number of categories; the page follows your finger, and the strip and background follow the page.
 - Starring up to three categories lists them first; the rest follow.
 - New categories get an SF Symbol suggested from the name (Groceries gets a cart, Gym a dumbbell), or a letter badge when no keyword matches.
 - Each category tints the background; changing tabs sweeps the colour across.
