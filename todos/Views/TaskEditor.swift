@@ -7,11 +7,14 @@ struct TaskEditor: View {
     let task: TaskItem?
     @State private var title: String
     @State private var category: TaskCategory
+    @State private var starred: Bool
+    @AppStorage("hapticsEnabled") private var hapticsEnabled = true
 
     init(task: TaskItem? = nil, category: TaskCategory) {
         self.task = task
         _title = State(initialValue: task?.title ?? "")
         _category = State(initialValue: task?.category ?? category)
+        _starred = State(initialValue: task?.isStarred ?? false)
     }
 
     private var valid: Bool { !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -37,6 +40,21 @@ struct TaskEditor: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(12).modifier(GlassCard())
                 }
+                Toggle(isOn: $starred.animation(.spring(duration: 0.35, bounce: 0.4))) {
+                    Label {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Star this task").font(.headline)
+                            Text("Starred tasks always stay at the top").font(.caption).foregroundStyle(.secondary)
+                        }
+                    } icon: {
+                        Image(systemName: starred ? "star.fill" : "star")
+                            .font(.title3).foregroundStyle(TodoPalette.gold)
+                            .symbolEffect(.bounce, value: starred)
+                    }
+                }
+                .tint(TodoPalette.gold)
+                .padding(.horizontal, 16).padding(.vertical, 12).modifier(GlassCard())
+                .onChange(of: starred) { RewardFeedback.shared.tabChanged(haptics: hapticsEnabled) }
                 Button(action: save) {
                     Text(task == nil ? "Add Task" : "Save Changes")
                         .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 20)
@@ -74,9 +92,9 @@ struct TaskEditor: View {
         guard valid else { return }
         let saved: Bool
         if let task {
-            saved = store.edit(task.id, title: title, category: category)
+            saved = store.edit(task.id, title: title, category: category, isStarred: starred)
         } else {
-            saved = store.add(title: title, category: category)
+            saved = store.add(title: title, category: category, isStarred: starred)
         }
         if saved { dismiss() }
     }
