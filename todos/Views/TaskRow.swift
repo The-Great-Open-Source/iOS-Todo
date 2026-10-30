@@ -10,6 +10,7 @@ struct TaskRow: View {
     var arrived = false
     let toggle: () -> Void
     var edit: () -> Void = {}
+    var star: () -> Void = {}
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.todoTheme) private var theme
 
@@ -34,8 +35,19 @@ struct TaskRow: View {
                 .padding(.vertical, 9)
                 .contentShape(Rectangle())
                 .onTapGesture(perform: edit)
+            // A starred task shows its star; tapping it lets the task go back to the pack.
+            if task.isStarred {
+                Button(action: star) {
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 17, weight: .medium)).foregroundStyle(TodoPalette.gold)
+                        .symbolEffect(.bounce, value: task.isStarred)
+                        .frame(width: 36, height: 44).contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Starred. Tap to unstar \(task.title)")
+            }
         }
-        .padding(.leading, 13).padding(.trailing, 22).padding(.vertical, 13)
+        .padding(.leading, 13).padding(.trailing, task.isStarred ? 10 : 22).padding(.vertical, 13)
         .modifier(GlassTile(tint: task.category.accent))
         .keyframeAnimator(initialValue: Arrival(), trigger: arrived) { [live = arrived && !reduceMotion, accent = theme.accent] view, fx in
             view

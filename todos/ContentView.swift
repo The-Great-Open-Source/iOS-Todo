@@ -215,6 +215,11 @@ struct ContentView: View {
         if args.contains("-demoOpenCategory") { try? await Task.sleep(for: .seconds(value("-demoDelay") ?? 1.5)); sheet = .newCategory }
         if args.contains("-demoOpenAdd") { try? await Task.sleep(for: .seconds(pause)); showingAdd = true }
         if args.contains("-demoAdd") { try? await Task.sleep(for: .seconds(pause)); store.add(title: "Water the plants", category: category) }
+        if let index = value("-demoStar") {
+            try? await Task.sleep(for: .seconds(pause))
+            if visibleTasks.indices.contains(Int(index)) { toggleStar(visibleTasks[Int(index)]) }
+        }
+        if args.contains("-demoAddStarred") { try? await Task.sleep(for: .seconds(pause)); store.add(title: "Pay rent", category: category, isStarred: true) }
         if args.contains("-demoDelete") { try? await Task.sleep(for: .seconds(pause)); if let first = visibleTasks.first { deleteTask(first) } }
         guard let count = value("-demoComplete") else { return }
         try? await Task.sleep(for: .seconds(value("-demoDelay") ?? 2))
@@ -274,7 +279,7 @@ struct ContentView: View {
                 }
             }
             if reordering {
-                Text("Drag to reorder").font(.caption).foregroundStyle(.secondary)
+                Text("Drag to reorder. Starred tasks stay on top.").font(.caption).foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             } else {
                 progressLine
@@ -335,6 +340,12 @@ struct ContentView: View {
         .tabViewStyle(.page(indexDisplayMode: .never))
     }
 
+    private func toggleStar(_ task: TaskItem) {
+        RewardFeedback.shared.tabChanged(haptics: hapticsEnabled)
+        // The tile glides to its new place: to the top when starred, back into the pack when not.
+        withAnimation(reduceMotion ? nil : .spring(duration: 0.5, bounce: 0.15)) { store.toggleStar(task.id) }
+    }
+
     private func deleteTask(_ task: TaskItem) {
         RewardFeedback.shared.removed(haptics: hapticsEnabled)
         withAnimation(reduceMotion ? nil : .spring(duration: 0.4, bounce: 0.05)) { store.delete(task) }
@@ -348,14 +359,16 @@ struct ContentView: View {
         } else {
             List {
                 ForEach(tasks) { task in
-                    TaskRow(task: task, arrived: task.id == highlightID, toggle: { toggleTask(task) }, edit: { sheet = .edit(task) })
+                    TaskRow(task: task, arrived: task.id == highlightID, toggle: { toggleTask(task) }, edit: { sheet = .edit(task) }, star: { toggleStar(task) })
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: 0, leading: 24, bottom: 12, trailing: 24))
                     .contextMenu {
+                        Button(task.isStarred ? "Unstar Task" : "Star Task", systemImage: task.isStarred ? "star.slash" : "star") { toggleStar(task) }
                         Button("Edit Task", systemImage: "pencil") { sheet = .edit(task) }
                         Button("Delete Task", systemImage: "trash", role: .destructive) { deleteTask(task) }
                     }
+                    .accessibilityAction(named: task.isStarred ? "Unstar task" : "Star task") { toggleStar(task) }
                     .accessibilityAction(named: "Edit task") { sheet = .edit(task) }
                     .accessibilityAction(named: "Delete task") { deleteTask(task) }
                 }
