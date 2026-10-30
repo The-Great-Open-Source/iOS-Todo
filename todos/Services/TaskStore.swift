@@ -172,10 +172,13 @@ final class TaskStore {
         }
     }
 
+    /// Open tasks come before completed ones (unless `sortingCompleted` is off), and within each group
+    /// starred tasks come first, then the saved manual order.
     func items(in category: TaskCategory, showCompleted: Bool = true, sortingCompleted: Bool = true) -> [TaskItem] {
         tasks.filter { $0.category == category && (showCompleted || !$0.isCompleted) }
             .sorted {
                 if sortingCompleted && $0.isCompleted != $1.isCompleted { return !$0.isCompleted }
+                if $0.isStarred != $1.isStarred { return $0.isStarred }
                 if $0.order != $1.order { return $0.order < $1.order }
                 return $0.createdAt < $1.createdAt
             }
@@ -247,15 +250,16 @@ final class TaskStore {
     }
 
     @discardableResult
-    func add(title: String, category: TaskCategory) -> Bool {
+    func add(title: String, category: TaskCategory, isStarred: Bool = false) -> Bool {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty, categories.contains(category) else { return false }
         let order = (tasks.filter { $0.category == category }.map(\.order).max() ?? -1) + 1
-        return commit(tasks + [TaskItem(title: title, category: category, order: order)])
+        return commit(tasks + [TaskItem(title: title, category: category, order: order, isStarred: isStarred)])
     }
 
     @discardableResult
-    func edit(_ id: UUID, title: String, category: TaskCategory) -> Bool {
+    /// `isStarred` of nil leaves the star as it is.
+    func edit(_ id: UUID, title: String, category: TaskCategory, isStarred: Bool? = nil) -> Bool {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty, categories.contains(category), let index = tasks.firstIndex(where: { $0.id == id }) else { return false }
         var updated = tasks
@@ -264,7 +268,15 @@ final class TaskStore {
         }
         updated[index].title = title
         updated[index].category = category
+        if let isStarred { updated[index].isStarred = isStarred }
         return commit(updated)
+    }
+
+    func toggleStar(_ id: UUID) {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        var updated = tasks
+        updated[index].isStarred.toggle()
+        commit(updated)
     }
 
     func toggle(_ id: UUID, at date: Date = Date()) {

@@ -45,6 +45,36 @@ struct TaskStoreChecks {
         }
         print("PASS: undo banner state clears when dismissed")
 
+        let starURL = URL.temporaryDirectory.appendingPathComponent("TodosStars-\(UUID()).json")
+        defer { try? FileManager.default.removeItem(at: starURL) }
+        let starStore = TaskStore(persistence: TaskPersistence(url: starURL))
+        precondition(starStore.tasks.allSatisfy { !$0.isStarred })
+        precondition(starStore.add(title: "Pay rent", category: .today, isStarred: true))
+        precondition(starStore.items(in: .today).first?.title == "Pay rent")
+        precondition(starStore.items(in: .today).dropFirst().allSatisfy { !$0.isStarred })
+        let promoted = starStore.items(in: .today)[2]
+        starStore.toggleStar(promoted.id)
+        precondition(starStore.items(in: .today).prefix(2).allSatisfy(\.isStarred))
+        precondition(starStore.items(in: .today).map(\.title).prefix(2) == [promoted.title, "Pay rent"])
+        starStore.toggle(promoted.id)
+        let afterDone = starStore.items(in: .today)
+        precondition(afterDone.first?.title == "Pay rent")
+        precondition(afterDone.last?.title == promoted.title)
+        precondition(starStore.items(in: .today, sortingCompleted: false).prefix(2).allSatisfy(\.isStarred))
+        let tapped = starStore.items(in: .today)[0]
+        precondition(starStore.edit(tapped.id, title: "Pay rent today", category: .today))
+        precondition(starStore.tasks.first { $0.id == tapped.id }?.isStarred == true)
+        precondition(starStore.edit(tapped.id, title: "Pay rent today", category: .today, isStarred: false))
+        precondition(starStore.tasks.first { $0.id == tapped.id }?.isStarred == false)
+        precondition(!starStore.items(in: .today).contains { $0.isStarred && $0.id == tapped.id })
+        precondition(TaskStore(persistence: TaskPersistence(url: starURL)).tasks == starStore.tasks)
+        let withoutStar = try JSONEncoder().encode(TaskItem(title: "Old", category: .today, order: 0))
+        var legacyJSON = try JSONSerialization.jsonObject(with: withoutStar) as! [String: Any]
+        legacyJSON.removeValue(forKey: "isStarred")
+        let legacyTask = try JSONDecoder().decode(TaskItem.self, from: JSONSerialization.data(withJSONObject: legacyJSON))
+        precondition(!legacyTask.isStarred && legacyTask.title == "Old")
+        print("PASS: starred tasks sort to the top (open before completed), survive edits and restarts, and old files load unstarred")
+
         precondition(CategoryIcon.suggest(for: "Groceries") == "cart")
         precondition(CategoryIcon.suggest(for: "  WORK  ") == "briefcase")
         precondition(CategoryIcon.suggest(for: "Gym & recovery") == "dumbbell")
