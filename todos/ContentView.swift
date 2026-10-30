@@ -26,7 +26,6 @@ struct ContentView: View {
     @State private var ledger = CelebrationLedger()
     @State private var combo = 0
     @State private var lastCompletion = Date.distantPast
-    @State private var slideForward = true
     @State private var highlightID: UUID?
     @State private var showingAdd = false
     @Namespace private var zoomNamespace
@@ -34,18 +33,24 @@ struct ContentView: View {
 
     private var category: TaskCategory { store.selectedCategory }
     private var theme: TodoTheme { category.theme }
-    private var visibleTasks: [TaskItem] {
-        store.items(in: category, showCompleted: reordering || showCompleted, sortingCompleted: !reordering)
+    private var visibleTasks: [TaskItem] { visibleTasks(in: category) }
+    private func visibleTasks(in page: TaskCategory) -> [TaskItem] {
+        store.items(in: page, showCompleted: reordering || showCompleted, sortingCompleted: !reordering)
             .filter { !$0.isArchived(at: currentDate) }
     }
     private var activeItems: [TaskItem] {
         store.items(in: category).filter { !$0.isArchived(at: currentDate) }
     }
     private var remaining: Int { store.items(in: category, showCompleted: false).count }
-    /// Starred categories first, then the rest, so swiping reaches every tab.
+    /// Starred categories first, then the rest. Swiping pages through all of them, in this order.
     private var orderedCategories: [TaskCategory] { store.mainCategories + store.moreCategories }
     private var categoryBinding: Binding<TaskCategory> {
         Binding(get: { category }, set: { selectCategory($0) })
+    }
+    private var pageSelection: Binding<String> {
+        Binding(get: { category.id }, set: { id in
+            if let target = orderedCategories.first(where: { $0.id == id }) { selectCategory(target) }
+        })
     }
     private var undoToken: String? {
         guard store.deletedTask != nil || store.deletedCategory != nil else { return nil }
@@ -140,23 +145,12 @@ struct ContentView: View {
 
     private func selectCategory(_ new: TaskCategory) {
         guard new != category else { return }
-        let order = orderedCategories
-        slideForward = (order.firstIndex(of: new) ?? 0) > (order.firstIndex(of: category) ?? 0)
         RewardFeedback.shared.tabChanged(haptics: hapticsEnabled)
-        // Let the slide direction render first, so the outgoing page leaves the right way.
-        DispatchQueue.main.async {
-            withAnimation(reduceMotion ? nil : .spring(duration: 0.55, bounce: 0.1)) {
-                store.selectCategory(new)
-                reordering = false
-                celebration = nil
-            }
+        withAnimation(reduceMotion ? nil : .spring(duration: 0.5, bounce: 0.1)) {
+            store.selectCategory(new)
+            reordering = false
+            celebration = nil
         }
-    }
-
-    private func stepCategory(_ offset: Int) {
-        let order = orderedCategories
-        guard let index = order.firstIndex(of: category), order.indices.contains(index + offset) else { return }
-        selectCategory(order[index + offset])
     }
 
     private func toggleTask(_ task: TaskItem) {
@@ -267,8 +261,6 @@ struct ContentView: View {
             }
         }
         .padding(.horizontal, 28).padding(.top, 8).padding(.bottom, 18)
-        .contentShape(Rectangle())
-        .simultaneousGesture(tabSwipe, including: reordering ? .subviews : .all)
     }
 
     /// One thin line that fills as the list gets done.
@@ -310,26 +302,17 @@ struct ContentView: View {
 
     // MARK: List
 
-    /// The current tab's tasks. Drag sideways to move through every tab; the page slides the way you drag.
+    /// Every tab is a page. Swipe sideways anywhere over the list to move to the next or previous
+    /// tab; the page follows your finger, and the tab strip and background follow the page.
     private var tabContent: some View {
-        ZStack {
-            taskList
-                .id(category.id)
-                .transition(reduceMotion ? .opacity : .push(from: slideForward ? .trailing : .leading))
-        }
-        .clipped()
-    }
-
-    /// Drag sideways over the title area (or an empty list) to move through the tabs. Over the task
-    /// tiles a left swipe removes the tile instead, so the list itself is left alone.
-    private var tabSwipe: some Gesture {
-        DragGesture(minimumDistance: 24)
-            .onEnded { value in
-                let dx = value.translation.width, dy = value.translation.height
-                let flick = abs(value.predictedEndTranslation.width)
-                guard abs(dx) > 30, abs(dx) > 70 || flick > 180, abs(dx) > abs(dy) * 1.5 else { return }
-                stepCategory(dx < 0 ? 1 : -1)
+        TabView(selection: pageSelection) {
+            ForEach(orderedCategories) { page in
+                taskPage(for: page)
+                    .environment(\.todoTheme, page.theme)
+                    .tag(page.id)
             }
+        }
+        .tabViewStyle(.page(indexDisplayMode: .never))
     }
 
     private func deleteTask(_ task: TaskItem) {
@@ -338,10 +321,10 @@ struct ContentView: View {
     }
 
     @ViewBuilder
-    private var taskList: some View {
-        let tasks = visibleTasks
+    private func taskPage(for page: TaskCategory) -> some View {
+        let tasks = visibleTasks(in: page)
         if tasks.isEmpty {
-            emptyState
+            emptyState(for: page)
         } else {
             List {
                 ForEach(tasks) { task in
@@ -349,11 +332,6 @@ struct ContentView: View {
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: 0, leading: 24, bottom: 12, trailing: 24))
-                    // Swipe the tile right to left: a short pull reveals the buttons, a long pull removes it.
-                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
-                        Button(role: .destructive) { deleteTask(task) } label: { Label("Remove", systemImage: "trash") }
-                        Button { sheet = .edit(task) } label: { Label("Edit", systemImage: "pencil") }.tint(theme.deep)
-                    }
                     .contextMenu {
                         Button("Edit Task", systemImage: "pencil") { sheet = .edit(task) }
                         Button("Delete Task", systemImage: "trash", role: .destructive) { deleteTask(task) }
@@ -361,7 +339,7 @@ struct ContentView: View {
                     .accessibilityAction(named: "Edit task") { sheet = .edit(task) }
                     .accessibilityAction(named: "Delete task") { deleteTask(task) }
                 }
-                .onMove { offsets, destination in store.move(in: category, from: offsets, to: destination, visibleIDs: tasks.map(\.id)) }
+                .onMove { offsets, destination in store.move(in: page, from: offsets, to: destination, visibleIDs: tasks.map(\.id)) }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
@@ -370,8 +348,8 @@ struct ContentView: View {
         }
     }
 
-    private var emptyState: some View {
-        let hasTasks = !store.items(in: category).isEmpty
+    private func emptyState(for page: TaskCategory) -> some View {
+        let hasTasks = !store.items(in: page).isEmpty
         return GeometryReader { geometry in
             ScrollView {
                 VStack(spacing: 0) {
@@ -395,7 +373,6 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, minHeight: geometry.size.height)
             }
             .scrollIndicators(.hidden)
-            .simultaneousGesture(tabSwipe, including: reordering ? .subviews : .all)
         }
     }
 
