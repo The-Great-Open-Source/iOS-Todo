@@ -1,12 +1,13 @@
 import SwiftUI
 
 private enum TaskSheet: Identifiable {
-    case edit(TaskItem), settings, categories, completed
+    case edit(TaskItem), settings, categories, newCategory, completed
     var id: String {
         switch self {
         case .edit(let task): task.id.uuidString
         case .settings: "settings"
         case .categories: "categories"
+        case .newCategory: "newCategory"
         case .completed: "completed"
         }
     }
@@ -129,6 +130,11 @@ struct ContentView: View {
             case .edit(let task): TaskEditor(task: task, category: category)
             case .settings: SettingsView()
             case .categories: CategoryManager()
+            case .newCategory:
+                QuickCategorySheet { created in
+                    // Land on the newest category once the sheet has closed.
+                    if let created { selectCategory(created) }
+                }
             case .completed: CompletedTasksView(category: category)
             }
         }
@@ -206,6 +212,7 @@ struct ContentView: View {
             if orderedCategories.indices.contains(Int(index)) { selectCategory(orderedCategories[Int(index)]) }
         }
         let pause = value("-demoDelay") ?? 1.5
+        if args.contains("-demoOpenCategory") { try? await Task.sleep(for: .seconds(value("-demoDelay") ?? 1.5)); sheet = .newCategory }
         if args.contains("-demoOpenAdd") { try? await Task.sleep(for: .seconds(pause)); showingAdd = true }
         if args.contains("-demoAdd") { try? await Task.sleep(for: .seconds(pause)); store.add(title: "Water the plants", category: category) }
         if args.contains("-demoDelete") { try? await Task.sleep(for: .seconds(pause)); if let first = visibleTasks.first { deleteTask(first) } }
@@ -237,20 +244,33 @@ struct ContentView: View {
                     Button("Done") { reordering = false }
                         .font(.subheadline.weight(.semibold)).frame(minHeight: 44)
                 } else {
-                    Menu {
-                        Button("Reorder Tasks", systemImage: "arrow.up.arrow.down") { reordering = true }
-                            .disabled(store.items(in: category).count < 2)
-                        Button("Completed tasks", systemImage: "checkmark.circle") { sheet = .completed }
-                        Button("Categories", systemImage: "square.grid.2x2") { sheet = .categories }
-                        Button("Settings", systemImage: "gearshape") { sheet = .settings }
-                    } label: {
-                        Image(systemName: "ellipsis")
-                            .font(.system(size: 18, weight: .medium))
-                            .foregroundStyle(.primary)
-                            .frame(width: 44, height: 44)
-                            .glassEffect(.regular.interactive(), in: Circle())
+                    HStack(spacing: 10) {
+                        Button {
+                            RewardFeedback.shared.pressed(haptics: hapticsEnabled)
+                            sheet = .newCategory
+                        } label: {
+                            Image(systemName: "plus")
+                                .font(.system(size: 18, weight: .semibold))
+                                .foregroundStyle(.primary)
+                                .frame(width: 44, height: 44)
+                                .glassEffect(.regular.tint(theme.accent.opacity(0.18)).interactive(), in: Circle())
+                        }
+                        .buttonStyle(.plain).accessibilityLabel("New category")
+                        Menu {
+                            Button("Reorder Tasks", systemImage: "arrow.up.arrow.down") { reordering = true }
+                                .disabled(store.items(in: category).count < 2)
+                            Button("Completed tasks", systemImage: "checkmark.circle") { sheet = .completed }
+                            Button("Categories", systemImage: "square.grid.2x2") { sheet = .categories }
+                            Button("Settings", systemImage: "gearshape") { sheet = .settings }
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .font(.system(size: 18, weight: .medium))
+                                .foregroundStyle(.primary)
+                                .frame(width: 44, height: 44)
+                                .glassEffect(.regular.interactive(), in: Circle())
+                        }
+                        .buttonStyle(.plain).accessibilityLabel("Task options")
                     }
-                    .buttonStyle(.plain).accessibilityLabel("Task options")
                 }
             }
             if reordering {
