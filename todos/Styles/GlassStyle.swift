@@ -14,6 +14,9 @@ struct TodoTheme: Equatable {
     let hue: Double
 
     var accent: Color { Color(hue: hue, saturation: 0.50, brightness: 0.86) }
+    /// Neighbouring hues, used for the multi-colour celebration effects.
+    var accent2: Color { Color(hue: hue + 0.08, saturation: 0.62, brightness: 0.98) }
+    var accent3: Color { Color(hue: hue - 0.06, saturation: 0.45, brightness: 1.0) }
     /// A deeper shade that stays readable as text on light and dark backgrounds.
     var deep: Color { Color(hue: hue, saturation: 0.55, brightness: 0.62) }
     var confetti: [Color] {
