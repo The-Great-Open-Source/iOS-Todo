@@ -14,6 +14,11 @@ struct TaskEditor: View {
     @State private var pickedData: Data?
     @State private var pickedPreview: CGImage?
     @State private var pickerItem: PhotosPickerItem?
+    @State private var remindOn: Bool
+    @State private var remindDate: Date
+    @State private var showRemindersDenied = false
+    @Environment(\.todoTheme) private var theme
+    @Environment(\.openURL) private var openURL
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
 
     init(task: TaskItem? = nil, category: TaskCategory) {
@@ -23,6 +28,10 @@ struct TaskEditor: View {
         _starred = State(initialValue: task?.isStarred ?? false)
         _note = State(initialValue: task?.note ?? "")
         _photoFilename = State(initialValue: task?.imageFilename)
+        _remindOn = State(initialValue: task?.reminderDate != nil && task?.reminderID != nil)
+        _remindDate = State(initialValue: task?.reminderDate
+            ?? Calendar.current.nextDate(after: Date(), matching: DateComponents(minute: 0), matchingPolicy: .nextTime)
+            ?? Date().addingTimeInterval(3600))
     }
 
     private var valid: Bool { !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
@@ -69,6 +78,7 @@ struct TaskEditor: View {
                     .padding(16).modifier(GlassCard())
                     .accessibilityLabel("Note")
                 photoSection
+                reminderSection
                 Button(action: save) {
                     Text(task == nil ? "Add Task" : "Save Changes")
                         .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 20)
@@ -96,12 +106,56 @@ struct TaskEditor: View {
                 }
             }
             .task { focused = true }
+            .alert("Reminders access is off", isPresented: $showRemindersDenied) {
+                Button("Open Settings") {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { openURL(url) }
+                }
+                Button("Not now", role: .cancel) { }
+            } message: {
+                Text("Allow Todos to use Reminders in Settings, and your reminders will appear in Apple’s Reminders app.")
+            }
             .alert("Couldn’t save task", isPresented: Binding(get: { store.errorMessage != nil }, set: { if !$0 { store.errorMessage = nil } })) {
                 Button("OK") { store.errorMessage = nil }
             } message: { Text(store.errorMessage ?? "") }
         }
         .presentationDetents([.large])
         .presentationDragIndicator(.visible)
+    }
+
+    /// Turning this on adds the task to Apple's Reminders app, which then alerts you at the chosen time.
+    private var reminderSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(isOn: Binding(get: { remindOn }, set: { wantsReminder in
+                if wantsReminder {
+                    Task {
+                        if await ReminderService.shared.requestAccess() {
+                            withAnimation(.snappy) { remindOn = true }
+                        } else {
+                            showRemindersDenied = true
+                        }
+                    }
+                } else {
+                    withAnimation(.snappy) { remindOn = false }
+                }
+            })) {
+                Label {
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text("Remind me").font(.headline)
+                        Text("Adds it to the Reminders app").font(.caption).foregroundStyle(.secondary)
+                    }
+                } icon: {
+                    Image(systemName: remindOn ? "bell.fill" : "bell").font(.title3).foregroundStyle(theme.deep)
+                        .symbolEffect(.bounce, value: remindOn)
+                }
+            }
+            .tint(theme.deep)
+            if remindOn {
+                DatePicker("When", selection: $remindDate, in: min(Date(), remindDate)..., displayedComponents: [.date, .hourAndMinute])
+                    .datePickerStyle(.compact)
+                    .transition(.opacity.combined(with: .move(edge: .top)))
+            }
+        }
+        .padding(.horizontal, 16).padding(.vertical, 12).modifier(GlassCard())
     }
 
     /// A photo for the tile: pick one, see it, or take it away again.
@@ -153,7 +207,21 @@ struct TaskEditor: View {
             }
             filename = stored
         }
-        let extras = TaskExtras(note: note, imageFilename: filename)
+        var reminderID = task?.reminderID
+        var reminderDate: Date?
+        if remindOn {
+            guard let linked = ReminderService.shared.upsert(id: reminderID, title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+                                                             note: note.trimmingCharacters(in: .whitespacesAndNewlines), due: remindDate) else {
+                store.errorMessage = "The reminder couldn’t be added to the Reminders app. Please try again."
+                return
+            }
+            reminderID = linked
+            reminderDate = remindDate
+        } else {
+            ReminderService.shared.remove(id: reminderID)
+            reminderID = nil
+        }
+        let extras = TaskExtras(note: note, imageFilename: filename, reminderDate: reminderDate, reminderID: reminderID)
         let saved: Bool
         if let task {
             saved = store.edit(task.id, title: title, category: category, isStarred: starred, extras: extras)
