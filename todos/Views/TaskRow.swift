@@ -49,6 +49,12 @@ struct TaskRow: View {
                 .accessibilityLabel("Starred. Tap to unstar \(task.title)")
             }
         }
+        if let due = task.reminderDate, !task.isCompleted {
+            Label(due.formatted(date: .abbreviated, time: .shortened), systemImage: "bell.fill")
+                .font(.caption.weight(.medium)).foregroundStyle(theme.deep)
+                .padding(.leading, 52)
+                .accessibilityLabel("Reminder \(due.formatted(date: .complete, time: .shortened))")
+        }
         if let note = task.note {
             Text(note)
                 .font(.subheadline).foregroundStyle(.secondary).lineLimit(3)

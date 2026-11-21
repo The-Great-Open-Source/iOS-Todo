@@ -172,6 +172,8 @@ struct ContentView: View {
         }
         guard let updated = store.tasks.first(where: { $0.id == task.id }),
               updated.isCompleted != task.isCompleted else { return }
+        // Keep Apple's Reminders item in step: ticked off when done, open again when reopened.
+        ReminderService.shared.setCompleted(id: updated.reminderID, updated.isCompleted)
         guard updated.isCompleted else {
             combo = 0
             RewardFeedback.shared.reopened(haptics: hapticsEnabled, sound: soundEnabled)
@@ -238,13 +240,31 @@ struct ContentView: View {
             if let destination = CGImageDestinationCreateWithData(png, "public.png" as CFString, 1, nil), let image = context.makeImage() {
                 CGImageDestinationAddImage(destination, image, nil); CGImageDestinationFinalize(destination)
             }
+            for earlier in store.tasks where earlier.title == "Plan the trip" { store.delete(earlier) }
             if let name = try? store.images.save(png as Data) {
-                store.add(title: "Plan the trip", category: category, extras: TaskExtras(note: "Book the train first, then the hotel near the old town. Check visa rules.", imageFilename: name))
+                store.add(title: "Plan the trip", category: category, extras: TaskExtras(note: "Book the train first, then the hotel near the old town. Check visa rules.", imageFilename: name, reminderDate: Date().addingTimeInterval(7200), reminderID: "demo"))
             }
         }
         if args.contains("-demoEditLast") {
             try? await Task.sleep(for: .seconds(pause))
             if let last = visibleTasks.last { sheet = .edit(last) }
+        }
+        if args.contains("-demoReminderTest") {
+            let service = ReminderService.shared
+            let say = { (items: Any...) in NSLog("%@", items.map { "\($0)" }.joined(separator: " ")) }
+            say("REMINDER-TEST access granted:", await service.requestAccess())
+            let due = Date().addingTimeInterval(3600)
+            let id = service.upsert(id: nil, title: "Todos self-test", note: "a note", due: due)
+            say("REMINDER-TEST created:", id != nil)
+            if let id, let made = service.snapshot(id: id) {
+                say("REMINDER-TEST read back: title=\(made.title) dueOK=\(abs((made.due ?? .distantPast).timeIntervalSince(due)) < 60) alarmOK=\(abs((made.alarm ?? .distantPast).timeIntervalSince(due)) < 1) completed=\(made.completed)")
+                service.setCompleted(id: id, true)
+                say("REMINDER-TEST completed after task done:", service.snapshot(id: id)?.completed ?? false)
+                let again = service.upsert(id: id, title: "Todos self-test edited", note: nil, due: due.addingTimeInterval(600))
+                say("REMINDER-TEST edit keeps the same item:", again == id, "title:", service.snapshot(id: id)?.title ?? "-", "reopened:", !(service.snapshot(id: id)?.completed ?? true))
+                service.remove(id: id)
+                say("REMINDER-TEST removed:", service.snapshot(id: id) == nil)
+            }
         }
         if args.contains("-demoDelete") { try? await Task.sleep(for: .seconds(pause)); if let first = visibleTasks.first { deleteTask(first) } }
         guard let count = value("-demoComplete") else { return }
@@ -368,7 +388,19 @@ struct ContentView: View {
 
     /// Completed tasks are deleted for good three days after they were finished.
     private func sweepExpired() {
-        store.purgeExpired()
+        for task in store.purgeExpired() { ReminderService.shared.remove(id: task.reminderID) }
+    }
+
+    /// Undo brings a task back; if its reminder is still in the future it is put back in Reminders too.
+    private func undoTaskDeletion() {
+        guard let task = store.deletedTask else { return }
+        store.undoDelete()
+        guard let due = task.reminderDate, due > Date(), !task.isCompleted else {
+            store.setReminder(task.id, reminderID: nil)
+            return
+        }
+        let id = ReminderService.shared.upsert(id: nil, title: task.title, note: task.note, due: due)
+        store.setReminder(task.id, reminderID: id, date: due)
     }
 
     private func toggleStar(_ task: TaskItem) {
@@ -378,6 +410,7 @@ struct ContentView: View {
     }
 
     private func deleteTask(_ task: TaskItem) {
+        ReminderService.shared.remove(id: task.reminderID)
         RewardFeedback.shared.removed(haptics: hapticsEnabled)
         withAnimation(reduceMotion ? nil : .spring(duration: 0.4, bounce: 0.05)) { store.delete(task) }
     }
@@ -447,7 +480,7 @@ struct ContentView: View {
             if store.deletedCategory != nil {
                 undoBanner("Category deleted") { store.undoCategoryDeletion() }
             } else if store.deletedTask != nil {
-                undoBanner("Task deleted") { store.undoDelete() }
+                undoBanner("Task deleted") { undoTaskDeletion() }
             }
             if store.canDeleteCompletedCategory(category) {
                 Button(role: .destructive) {
