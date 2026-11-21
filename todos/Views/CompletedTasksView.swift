@@ -15,13 +15,22 @@ struct CompletedTasksView: View {
                 Section {
                     ForEach(completed) { task in
                         Button { store.toggle(task.id) } label: {
-                            Label(task.title, systemImage: "arrow.uturn.backward.circle")
-                                .foregroundStyle(.primary).padding(.vertical, 8)
+                            HStack(spacing: 12) {
+                                Image(systemName: "arrow.uturn.backward.circle")
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(task.title).foregroundStyle(.primary)
+                                    if let deletion = task.deletionDate {
+                                        Text("Deleted for good \(deletion, format: .relative(presentation: .named, unitsStyle: .wide))")
+                                            .font(.caption).foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                            .padding(.vertical, 6)
                         }
                         .accessibilityLabel("Reopen \(task.title)")
                     }
                 } footer: {
-                    Text("Completed tasks leave your checklist after 10 minutes. Tap a task here to reopen it. Today never resets at midnight.")
+                    Text("Completed tasks leave your checklist after 10 minutes and are deleted for good after 3 days. Tap a task here to reopen it before then; once deleted, it cannot be brought back.")
                 }
             }
             .overlay {

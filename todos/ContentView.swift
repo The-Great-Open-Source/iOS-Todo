@@ -67,8 +67,10 @@ struct ContentView: View {
         .background { AmbientBackground() }
         .tint(theme.deep)
         .onChange(of: scenePhase) { _, phase in
-            if phase == .active { currentDate = Date() }
-            else { celebration = nil }
+            if phase == .active {
+                currentDate = Date()
+                sweepExpired()
+            } else { celebration = nil }
         }
         .onChange(of: store.tasks) { old, new in
             let known = Set(old.map(\.id))
@@ -122,6 +124,7 @@ struct ContentView: View {
             guard celebration?.id == current.id else { return }
             withAnimation(.easeOut(duration: 0.2)) { celebration = nil }
         }
+        .task { sweepExpired() }
         #if DEBUG
         .task { await runDemoIfRequested() }
         #endif
@@ -338,6 +341,11 @@ struct ContentView: View {
             }
         }
         .tabViewStyle(.page(indexDisplayMode: .never))
+    }
+
+    /// Completed tasks are deleted for good three days after they were finished.
+    private func sweepExpired() {
+        store.purgeExpired()
     }
 
     private func toggleStar(_ task: TaskItem) {

@@ -24,7 +24,7 @@ struct SettingsView: View {
                 Section {
                     Button("Categories") { showingCategories = true }
                 } footer: {
-                    Text("Completed tasks disappear from your checklist after 10 minutes and remain available under Completed tasks. Today does not reset at midnight.")
+                    Text("Completed tasks disappear from your checklist after 10 minutes and stay under Completed tasks until they are deleted for good after 3 days.")
                 }
                 Section {
                     LabeledContent("Todos", value: Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")
