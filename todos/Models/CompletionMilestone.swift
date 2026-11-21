@@ -45,11 +45,9 @@ enum CompletionMilestone: Int, CaseIterable {
     }
 
     /// When the "impact" lands: the haptic thump, the confetti, the flash. Everything before it is build-up.
-    var impactTime: Double { [0.15, 0.23, 0.29, 0.37][tier - 1] }
-    /// How long the medal stays up before it lifts away.
-    var holdDuration: Double { [1.6, 1.8, 2.0, 2.8][tier - 1] }
+    var impactTime: Double { [0.19, 0.31, 0.41, 0.52][tier - 1] }
     /// How long the whole effect (including falling confetti) lasts.
-    var totalDuration: Double { [2.4, 2.8, 3.2, 4.4][tier - 1] }
+    var totalDuration: Double { [3.2, 4.0, 5.0, 7.0][tier - 1] }
 
     /// If one completion crosses several thresholds, show the highest one.
     static func crossed(before: Int, after: Int, total: Int) -> Self? {
