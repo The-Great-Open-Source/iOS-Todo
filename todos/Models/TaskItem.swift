@@ -23,6 +23,13 @@ struct TaskCategory: Identifiable, Hashable, Codable {
     }
 }
 
+/// The optional extras a task can carry beyond its title.
+struct TaskExtras: Equatable {
+    var note: String?
+    /// File name of a photo kept by `TaskImageStorage`.
+    var imageFilename: String?
+}
+
 struct TaskItem: Identifiable, Codable, Equatable {
     var id: UUID = UUID()
     var title: String
@@ -33,6 +40,8 @@ struct TaskItem: Identifiable, Codable, Equatable {
     var order: Int
     /// Starred tasks always sit above the rest of their list.
     var isStarred = false
+    var note: String?
+    var imageFilename: String?
 
     /// A completed task leaves the main list after ten minutes but can still be reopened.
     static let archiveDelay: TimeInterval = 10 * 60
@@ -54,7 +63,7 @@ struct TaskItem: Identifiable, Codable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, category, isCompleted, completedAt, createdAt, order, isStarred
+        case id, title, category, isCompleted, completedAt, createdAt, order, isStarred, note, imageFilename
     }
 
     init(title: String, category: TaskCategory, order: Int, isStarred: Bool = false) {
@@ -75,6 +84,8 @@ struct TaskItem: Identifiable, Codable, Equatable {
         order = try values.decode(Int.self, forKey: .order)
         // Files saved before stars existed have no such key.
         isStarred = try values.decodeIfPresent(Bool.self, forKey: .isStarred) ?? false
+        note = try values.decodeIfPresent(String.self, forKey: .note)
+        imageFilename = try values.decodeIfPresent(String.self, forKey: .imageFilename)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -87,5 +98,7 @@ struct TaskItem: Identifiable, Codable, Equatable {
         try values.encode(createdAt, forKey: .createdAt)
         try values.encode(order, forKey: .order)
         try values.encode(isStarred, forKey: .isStarred)
+        try values.encodeIfPresent(note, forKey: .note)
+        try values.encodeIfPresent(imageFilename, forKey: .imageFilename)
     }
 }
