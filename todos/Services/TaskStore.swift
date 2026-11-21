@@ -269,6 +269,8 @@ final class TaskStore {
         var task = TaskItem(title: title, category: category, order: order, isStarred: isStarred)
         task.note = Self.cleaned(note: extras.note)
         task.imageFilename = extras.imageFilename
+        task.reminderDate = extras.reminderDate
+        task.reminderID = extras.reminderID
         return commit(tasks + [task])
     }
 
@@ -288,6 +290,8 @@ final class TaskStore {
         if let extras {
             updated[index].note = Self.cleaned(note: extras.note)
             updated[index].imageFilename = extras.imageFilename
+            updated[index].reminderDate = extras.reminderDate
+            updated[index].reminderID = extras.reminderID
         }
         guard commit(updated) else { return false }
         images.delete(replacedPhoto)
@@ -304,6 +308,15 @@ final class TaskStore {
         guard commit(tasks.filter { !ids.contains($0.id) }) else { return [] }
         expired.forEach { images.delete($0.imageFilename) }
         return expired
+    }
+
+    /// Records the Reminders item a task is linked to, or clears the link.
+    func setReminder(_ id: UUID, reminderID: String?, date: Date? = nil) {
+        guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
+        var updated = tasks
+        updated[index].reminderID = reminderID
+        updated[index].reminderDate = reminderID == nil ? nil : (date ?? updated[index].reminderDate)
+        commit(updated)
     }
 
     func toggleStar(_ id: UUID) {
