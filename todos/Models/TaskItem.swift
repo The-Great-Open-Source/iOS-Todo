@@ -24,7 +24,7 @@ struct TaskCategory: Identifiable, Hashable, Codable {
 }
 
 /// The optional extras a task can carry beyond its title.
-struct TaskExtras: Equatable {
+nonisolated struct TaskExtras: Equatable {
     var note: String?
     /// File name of a photo kept by `TaskImageStorage`.
     var imageFilename: String?

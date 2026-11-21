@@ -3,7 +3,7 @@ import ImageIO
 
 /// Photos attached to tasks, stored as small JPEG files next to the task data.
 /// Photos are downscaled when saved so a few of them never weigh down the app or its backups.
-struct TaskImageStorage {
+nonisolated struct TaskImageStorage {
     let directory: URL
 
     static var local: Self {
