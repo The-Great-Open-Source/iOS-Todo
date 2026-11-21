@@ -1,3 +1,4 @@
+import PhotosUI
 import SwiftUI
 
 struct TaskEditor: View {
@@ -8,6 +9,11 @@ struct TaskEditor: View {
     @State private var title: String
     @State private var category: TaskCategory
     @State private var starred: Bool
+    @State private var note: String
+    @State private var photoFilename: String?
+    @State private var pickedData: Data?
+    @State private var pickedPreview: CGImage?
+    @State private var pickerItem: PhotosPickerItem?
     @AppStorage("hapticsEnabled") private var hapticsEnabled = true
 
     init(task: TaskItem? = nil, category: TaskCategory) {
@@ -15,12 +21,15 @@ struct TaskEditor: View {
         _title = State(initialValue: task?.title ?? "")
         _category = State(initialValue: task?.category ?? category)
         _starred = State(initialValue: task?.isStarred ?? false)
+        _note = State(initialValue: task?.note ?? "")
+        _photoFilename = State(initialValue: task?.imageFilename)
     }
 
     private var valid: Bool { !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
 
     var body: some View {
         NavigationStack {
+            ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 TextField("What’s on your mind?", text: $title, axis: .vertical)
                     .font(.system(.title2, weight: .medium)).lineLimit(2...5)
@@ -55,6 +64,11 @@ struct TaskEditor: View {
                 .tint(TodoPalette.gold)
                 .padding(.horizontal, 16).padding(.vertical, 12).modifier(GlassCard())
                 .onChange(of: starred) { RewardFeedback.shared.tabChanged(haptics: hapticsEnabled) }
+                TextField("Add a note", text: $note, axis: .vertical)
+                    .lineLimit(1...5)
+                    .padding(16).modifier(GlassCard())
+                    .accessibilityLabel("Note")
+                photoSection
                 Button(action: save) {
                     Text(task == nil ? "Add Task" : "Save Changes")
                         .font(.headline).frame(maxWidth: .infinity).padding(.vertical, 20)
@@ -71,6 +85,8 @@ struct TaskEditor: View {
                 Spacer(minLength: 0)
             }
             .padding(24)
+            }
+            .scrollDismissesKeyboard(.interactively)
             .background { AmbientBackground() }
             .navigationTitle(task == nil ? "Add Task" : "Edit Task")
             .navigationBarTitleDisplayMode(.inline)
@@ -88,13 +104,61 @@ struct TaskEditor: View {
         .presentationDragIndicator(.visible)
     }
 
+    /// A photo for the tile: pick one, see it, or take it away again.
+    @ViewBuilder
+    private var photoSection: some View {
+        if pickedPreview != nil || photoFilename != nil {
+            ZStack(alignment: .topTrailing) {
+                Group {
+                    if let pickedPreview {
+                        Image(decorative: pickedPreview, scale: 1).resizable().scaledToFill()
+                    } else if let photoFilename {
+                        TaskPhotoView(filename: photoFilename)
+                    }
+                }
+                .frame(maxWidth: .infinity).frame(height: 170).clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+                Button {
+                    withAnimation(.snappy) { pickedData = nil; pickedPreview = nil; photoFilename = nil; pickerItem = nil }
+                } label: {
+                    Image(systemName: "xmark").font(.system(size: 14, weight: .bold)).foregroundStyle(.primary)
+                        .frame(width: 36, height: 36).glassEffect(.regular.interactive(), in: Circle())
+                }
+                .padding(10).accessibilityLabel("Remove photo")
+            }
+            .transition(.opacity.combined(with: .scale(scale: 0.96)))
+        } else {
+            PhotosPicker(selection: $pickerItem, matching: .images) {
+                Label("Add a photo", systemImage: "photo.badge.plus")
+                    .font(.subheadline.weight(.medium)).foregroundStyle(.primary)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(16).modifier(GlassCard())
+            }
+            .onChange(of: pickerItem) { _, item in
+                guard let item else { return }
+                Task {
+                    guard let data = try? await item.loadTransferable(type: Data.self),
+                          let preview = TaskImageStorage.cgImage(from: data, maxPixels: 900) else { return }
+                    withAnimation(.snappy) { pickedData = data; pickedPreview = preview }
+                }
+            }
+        }
+    }
+
     private func save() {
         guard valid else { return }
+        var filename = photoFilename
+        if let pickedData {
+            guard let stored = try? store.images.save(pickedData) else {
+                store.errorMessage = "That photo couldn’t be saved. Please try a different one."
+                return
+            }
+            filename = stored
+        }
+        let extras = TaskExtras(note: note, imageFilename: filename)
         let saved: Bool
         if let task {
-            saved = store.edit(task.id, title: title, category: category, isStarred: starred)
+            saved = store.edit(task.id, title: title, category: category, isStarred: starred, extras: extras)
         } else {
-            saved = store.add(title: title, category: category, isStarred: starred)
+            saved = store.add(title: title, category: category, isStarred: starred, extras: extras)
         }
         if saved { dismiss() }
     }
