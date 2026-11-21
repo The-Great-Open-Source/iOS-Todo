@@ -5,10 +5,15 @@ All notable changes to this project are documented here. The format follows [Kee
 ## [Unreleased]
 
 ### Added
+- Notes and photos inside task tiles. Photos are downscaled, kept on the device, opened full screen by tapping, and deleted with their task.
+- **Remind me**: adds a task to Apple's Reminders app with a due time and an alert, so iOS handles the notification. Completing, editing, or deleting the task updates the reminder. The app asks for Reminders access the first time it is needed.
+- A new, calmer app icon: a flat ink background with an off-white checkbox and a brass checkmark.
 - Star a task, either when adding it or later from its touch-and-hold menu or by tapping the star on its tile. Starred tasks always stay at the top of their list. Saved tasks from earlier versions load unstarred.
 - A **+** button in the header, left of the options button, opens a quick new-category sheet: type a name and press return, or tap a suggestion. It previews the icon as you type, stays open so several categories can be added in a row, and jumps to the newest one when you finish.
 
 ### Changed
+- Completed tasks are now deleted for good three days after completion, with no undo, together with their photos and reminders. The Completed tasks screen shows when each one will go.
+- The milestone celebration no longer shows a card. It plays entirely behind the interface (colour wash, shockwaves, ribbons, rays, big confetti, and fireworks for the largest milestones), so nothing is covered and everything stays usable. The haptics are much stronger and longer.
 - Tabs are now a real pager: swipe sideways anywhere over the list to move to the next or previous tab, for any number of categories. The page follows your finger, and the tab strip and background follow the page. Previously swiping only worked over the title area and empty lists.
 
 ### Removed

@@ -12,7 +12,9 @@ A small, native SwiftUI checklist for iPhone built around Liquid Glass. Tasks li
 - Add, edit, complete, reopen, reorder, and remove tasks. Tap a title to edit it.
 - Star a task when you add it, or later from its touch-and-hold menu or by tapping its star. Starred tasks always stay at the top of their list; completed tasks still move below the open ones.
 - Touch and hold a tile for Edit or Remove, or use Delete Task in the editor. Removal offers Undo for a few seconds.
-- Completed tasks leave the list after 10 minutes and stay available under **Task options → Completed tasks**, where any of them can be reopened. Today never resets at midnight.
+- Add a note and a photo to a task; both appear inside its tile, and tapping the photo opens it full screen.
+- **Remind me** adds the task to Apple's Reminders app with a due time and an alert, so iOS delivers the notification and this app needs none of its own. Completing, editing, or deleting the task updates the reminder. The link is one way: changes made in Reminders are not read back. The app asks for Reminders access the first time you turn this on.
+- Completed tasks leave the list after 10 minutes and stay under **Task options → Completed tasks**, where they can be reopened. Three days after completion they are **deleted for good, with no undo**, along with their photos and reminders. Today never resets at midnight.
 - A new installation starts with four editable starter tasks.
 
 **Categories**
@@ -25,7 +27,7 @@ A small, native SwiftUI checklist for iPhone built around Liquid Glass. Tasks li
 
 **Rewards**
 - Checking a task draws its checkmark, fills the thin progress line under the title, and plays a haptic tap and a soft glass-bell chime. Completing several tasks in a row climbs a scale.
-- At 25%, 50%, 75% and 100% a glass card shows a ring filling to the milestone, with confetti, a custom haptic pattern, and a chime. Each tier is a little bigger; each is celebrated once per category until new tasks are added.
+- At 25%, 50%, 75% and 100% the background erupts: colour floods the screen, shockwaves roll through the glass tiles, ribbons and light rays sweep across, and confetti and (for the big ones) fireworks fill the space, all **behind** the interface so nothing is covered and everything stays tappable. A strong haptic pattern (a drumroll, a hard thump, a long fading rumble) and a chime play with it. Each tier is bigger than the last, and each is celebrated once per category until new tasks are added.
 - Add Task is a springy button; the editor zooms out of it, and the new tile glows briefly where it lands.
 - Haptics and sounds have separate switches in Settings. Reduce Motion, Reduce Transparency, Dynamic Type, and VoiceOver are respected. All sound is generated on device.
 
@@ -53,7 +55,7 @@ The task logic has no UI dependencies and is checked by a plain executable, so n
 
 ```sh
 xcrun swiftc todos/Models/TaskItem.swift todos/Models/CompletionMilestone.swift \
-  todos/Models/CategoryIcon.swift todos/Services/TaskStore.swift \
+  todos/Models/CategoryIcon.swift todos/Services/TaskImageStorage.swift todos/Services/TaskStore.swift \
   Tests/TaskStoreChecks.swift -o /tmp/todos-store-checks
 /tmp/todos-store-checks
 ```
@@ -71,7 +73,9 @@ todos/
     CompletionMilestone.swift  25/50/75/100% thresholds and the celebration ledger
     CategoryIcon.swift       SF Symbol suggestion from a category name
   Services/
-    TaskStore.swift          Observable store, atomic JSON persistence, Keychain mirror
+    TaskStore.swift          Observable store, atomic JSON persistence, Keychain mirror, 3-day purge
+    TaskImageStorage.swift   Downscaled task photos stored as JPEG files
+    ReminderService.swift    EventKit link to Apple's Reminders app
     RewardFeedback.swift     CoreHaptics patterns and synthesised chimes
   Styles/
     GlassStyle.swift         Themes, ambient background, glass tiles and cards, button style
@@ -80,7 +84,8 @@ todos/
     TaskEditor.swift         Add and edit
     CategoryManager.swift    Star, add, rename, remove categories
     QuickCategorySheet.swift Fast new-category sheet with suggestions
-    CompletionCelebration.swift  Milestone card and confetti
+    CompletionCelebration.swift  Milestone celebration, drawn behind the interface
+    TaskPhoto.swift          Cached task photo and full-screen viewer
     CompletedTasksView.swift     Reopen completed tasks
     SettingsView.swift       Appearance, completed visibility, haptics, sounds
 Tests/TaskStoreChecks.swift  Store and model regression checks
@@ -91,7 +96,7 @@ Design/                      App icon prompt and screenshots
 
 Tasks and categories are saved together as `Application Support/Todos/tasks.json`. Every change is written atomically before the UI updates; a failed save shows an error and leaves the list unchanged. Unreadable data is copied to a uniquely named recovery file first, and if even that copy fails, changes stay paused so the original is never overwritten. Older files migrate on load.
 
-Each save is also mirrored to the device Keychain. Deleting and reinstalling the app wipes its files but not the Keychain, so on the next launch the app restores your tasks, categories, and last tab instead of showing the starter tasks. The copy stays on the device (it is not synced to iCloud). Appearance, completed-task visibility, and the haptic and sound switches use `UserDefaults`.
+Each save is also mirrored to the device Keychain. Deleting and reinstalling the app wipes its files but not the Keychain, so on the next launch the app restores your tasks, categories, and last tab instead of showing the starter tasks. The copy stays on the device (it is not synced to iCloud). Photos are saved as downscaled JPEGs in `Application Support/Todos/Images`; they are not part of the Keychain backup, so after a reinstall your tasks and notes return but their photos do not. Reminders live in Apple's Reminders app and are never read back. Appearance, completed-task visibility, and the haptic and sound switches use `UserDefaults`.
 
 ## Debug launch flags
 
@@ -103,4 +108,8 @@ Debug builds accept a few flags for previewing the interface without tapping thr
 | `-demoCategories 1` | Seed sample categories and tasks (only when none exist yet) |
 | `-demoSelect I` | Switch to the I-th tab |
 | `-demoAdd 1`, `-demoOpenAdd 1`, `-demoDelete 1` | Add a task, open the editor, or remove the first task |
+| `-demoAddRich 1`, `-demoEditLast 1` | Add a task with a note, photo, and reminder, or open the editor on the last task |
+| `-demoStar I`, `-demoAddStarred 1` | Star the I-th task, or add a starred one |
+| `-demoOpenCategory 1`, `-demoCategoryName NAME` | Open the new-category sheet, optionally prefilled |
+| `-demoReminderTest 1` | Exercise the real Reminders store and log the results |
 | `-demoDelay S` | Wait S seconds before acting |
