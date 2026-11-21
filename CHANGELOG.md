@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-11-21
+
 ### Added
 - Notes and photos inside task tiles. Photos are downscaled, kept on the device, opened full screen by tapping, and deleted with their task.
 - **Remind me**: adds a task to Apple's Reminders app with a due time and an alert, so iOS handles the notification. Completing, editing, or deleting the task updates the reminder. The app asks for Reminders access the first time it is needed.
@@ -44,5 +46,6 @@ First release.
 - No iCloud sync, widgets, or reminders.
 - Gestures, haptics, VoiceOver, and larger text sizes have had limited hands-on testing; the task logic is covered by the automated checks.
 
-[Unreleased]: https://github.com/The-Great-Open-Source/iOS-Todo/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/The-Great-Open-Source/iOS-Todo/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/The-Great-Open-Source/iOS-Todo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/The-Great-Open-Source/iOS-Todo/releases/tag/v0.1.0
