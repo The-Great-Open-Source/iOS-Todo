@@ -28,6 +28,9 @@ nonisolated struct TaskExtras: Equatable {
     var note: String?
     /// File name of a photo kept by `TaskImageStorage`.
     var imageFilename: String?
+    /// When the task should remind you, and the id of the matching item in Apple's Reminders app.
+    var reminderDate: Date?
+    var reminderID: String?
 }
 
 struct TaskItem: Identifiable, Codable, Equatable {
@@ -42,6 +45,8 @@ struct TaskItem: Identifiable, Codable, Equatable {
     var isStarred = false
     var note: String?
     var imageFilename: String?
+    var reminderDate: Date?
+    var reminderID: String?
 
     /// A completed task leaves the main list after ten minutes but can still be reopened.
     static let archiveDelay: TimeInterval = 10 * 60
@@ -63,7 +68,7 @@ struct TaskItem: Identifiable, Codable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, title, category, isCompleted, completedAt, createdAt, order, isStarred, note, imageFilename
+        case id, title, category, isCompleted, completedAt, createdAt, order, isStarred, note, imageFilename, reminderDate, reminderID
     }
 
     init(title: String, category: TaskCategory, order: Int, isStarred: Bool = false) {
@@ -86,6 +91,8 @@ struct TaskItem: Identifiable, Codable, Equatable {
         isStarred = try values.decodeIfPresent(Bool.self, forKey: .isStarred) ?? false
         note = try values.decodeIfPresent(String.self, forKey: .note)
         imageFilename = try values.decodeIfPresent(String.self, forKey: .imageFilename)
+        reminderDate = try values.decodeIfPresent(Date.self, forKey: .reminderDate)
+        reminderID = try values.decodeIfPresent(String.self, forKey: .reminderID)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -100,5 +107,7 @@ struct TaskItem: Identifiable, Codable, Equatable {
         try values.encode(isStarred, forKey: .isStarred)
         try values.encodeIfPresent(note, forKey: .note)
         try values.encodeIfPresent(imageFilename, forKey: .imageFilename)
+        try values.encodeIfPresent(reminderDate, forKey: .reminderDate)
+        try values.encodeIfPresent(reminderID, forKey: .reminderID)
     }
 }
