@@ -1,7 +1,19 @@
 # Todos app icon
 
-Generated with the built-in image_gen tool. The integrated asset is `todos/Assets.xcassets/AppIcon.appiconset/AppIcon.png`, resized to 1024 × 1024 for Xcode. iOS applies the outer corner mask and derives appearance treatments from this universal icon.
+A calm, grown-up mark: a flat matte ink background, a thin off-white checkbox outline, and a single brass checkmark that breaks out of the box towards the top right. There is no glow, gradient lighting, or glass; the only tonal change is a very faint shift from top to bottom of the background. It stays legible at small home-screen sizes.
 
-## Final prompt
+The icon is drawn by `Design/make-icon.swift`, so it can be regenerated or tweaked (colours and geometry are at the top of the script) instead of re-prompting an image tool:
 
-Use case: logo-brand. Asset type: production iOS app icon for Todos, a premium minimalist checklist app with native Liquid Glass task tiles. Create one square 1024x1024 icon artwork, opaque and full bleed to all four square edges, WITHOUT rounded outer corners or surrounding whitespace; iOS applies its own icon mask. A rich deep slate navy background with a very subtle luminous blue gradient. In the center, a single bold beautifully proportioned white-to-icy-blue translucent glass checkmark, formed from thick softly beveled material with elegant refraction and a restrained specular highlight along its top edge. The checkmark fills approximately 60% of the canvas, instantly readable at small home-screen sizes, with balanced optical spacing. A faint soft blue pool of light behind the mark gives depth. Sophisticated, calm, iconic, impeccably simple. Front facing centered composition. No text, letters, numbers, extra symbols, inset rounded-square plaque, app mockup, device frame, watermark, particles, clutter, rainbow, or neon.
+```sh
+xcrun swiftc Design/make-icon.swift -o /tmp/make-icon && /tmp/make-icon
+```
+
+It writes `todos/Assets.xcassets/AppIcon.appiconset/AppIcon.png`: 1024 x 1024, opaque, full bleed with square corners. iOS applies the corner mask and derives its appearance treatments from this single universal icon.
+
+| Part | Colour |
+| --- | --- |
+| Background | ink slate, `#222C36` fading to `#182029` |
+| Checkbox | warm off-white, `#ECE7DD` |
+| Check | muted brass, `#C9A66B` |
+
+The first version was a glowing blue glass checkmark. It was replaced because it looked too showy for a quiet app.
