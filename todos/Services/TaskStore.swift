@@ -115,11 +115,14 @@ final class TaskStore {
     var selectedCategory: TaskCategory { categories.first { $0.id == selectedCategoryID } ?? .today }
     var errorMessage: String?
     private let persistence: TaskPersistence
+    /// Where task photos live. Photos are removed from disk when their task is gone for good.
+    let images: TaskImageStorage
     private var canSave = true
 
-    init(persistence: TaskPersistence? = nil) {
+    init(persistence: TaskPersistence? = nil, images: TaskImageStorage? = nil) {
         let persistence = persistence ?? .local
         self.persistence = persistence
+        self.images = images ?? .local
         do {
             let restoring = persistence.canRestoreFromMirror
             let isFirstLaunch = !FileManager.default.fileExists(atPath: persistence.url.path) && !restoring
@@ -158,6 +161,8 @@ final class TaskStore {
             }
             // Keep the backup in step with what is on disk, even if nothing changed this launch.
             persistence.syncMirror()
+            // Photos left behind by an undo window that closed while the app was not running.
+            self.images.removeUnreferenced(keeping: Set(tasks.compactMap(\.imageFilename)))
         } catch {
             // Preserve the original bytes before permitting a new checklist.
             do {
@@ -227,6 +232,7 @@ final class TaskStore {
                                        tasks: tasks.filter { $0.category == category },
                                        wasMain: mainCategoryIDs.contains(category.id))
         if commit(tasks.filter { $0.category != category }, categories: categories.filter { $0 != category }) {
+            deletedCategory?.tasks.forEach { images.delete($0.imageFilename) }
             deletedCategory = deletion
             return true
         }
@@ -249,17 +255,26 @@ final class TaskStore {
         }
     }
 
+    /// Notes are trimmed, and an empty note is no note.
+    private static func cleaned(note: String?) -> String? {
+        guard let trimmed = note?.trimmingCharacters(in: .whitespacesAndNewlines), !trimmed.isEmpty else { return nil }
+        return String(trimmed.prefix(2000))
+    }
+
     @discardableResult
-    func add(title: String, category: TaskCategory, isStarred: Bool = false) -> Bool {
+    func add(title: String, category: TaskCategory, isStarred: Bool = false, extras: TaskExtras = TaskExtras()) -> Bool {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty, categories.contains(category) else { return false }
         let order = (tasks.filter { $0.category == category }.map(\.order).max() ?? -1) + 1
-        return commit(tasks + [TaskItem(title: title, category: category, order: order, isStarred: isStarred)])
+        var task = TaskItem(title: title, category: category, order: order, isStarred: isStarred)
+        task.note = Self.cleaned(note: extras.note)
+        task.imageFilename = extras.imageFilename
+        return commit(tasks + [task])
     }
 
     @discardableResult
     /// `isStarred` of nil leaves the star as it is.
-    func edit(_ id: UUID, title: String, category: TaskCategory, isStarred: Bool? = nil) -> Bool {
+    func edit(_ id: UUID, title: String, category: TaskCategory, isStarred: Bool? = nil, extras: TaskExtras? = nil) -> Bool {
         let title = title.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty, categories.contains(category), let index = tasks.firstIndex(where: { $0.id == id }) else { return false }
         var updated = tasks
@@ -269,7 +284,14 @@ final class TaskStore {
         updated[index].title = title
         updated[index].category = category
         if let isStarred { updated[index].isStarred = isStarred }
-        return commit(updated)
+        let replacedPhoto = extras.flatMap { $0.imageFilename != updated[index].imageFilename ? updated[index].imageFilename : nil }
+        if let extras {
+            updated[index].note = Self.cleaned(note: extras.note)
+            updated[index].imageFilename = extras.imageFilename
+        }
+        guard commit(updated) else { return false }
+        images.delete(replacedPhoto)
+        return true
     }
 
     /// Permanently deletes completed tasks older than the retention period. There is no undo.
@@ -280,6 +302,7 @@ final class TaskStore {
         guard !expired.isEmpty else { return [] }
         let ids = Set(expired.map(\.id))
         guard commit(tasks.filter { !ids.contains($0.id) }) else { return [] }
+        expired.forEach { images.delete($0.imageFilename) }
         return expired
     }
 
@@ -300,11 +323,17 @@ final class TaskStore {
 
     func delete(_ task: TaskItem) {
         guard let current = tasks.first(where: { $0.id == task.id }) else { return }
-        if commit(tasks.filter { $0.id != task.id }) { deletedTask = current }
+        if commit(tasks.filter { $0.id != task.id }) {
+            // Its photo stays until the undo window closes.
+            images.delete(deletedTask?.imageFilename)
+            deletedTask = current
+        }
     }
 
-    /// The undo banners are transient; once they time out the deleted item is let go.
+    /// The undo banners are transient; once they time out the deleted item, and its photos, are let go.
     func dismissUndo() {
+        images.delete(deletedTask?.imageFilename)
+        deletedCategory?.tasks.forEach { images.delete($0.imageFilename) }
         deletedTask = nil
         deletedCategory = nil
     }

@@ -1,4 +1,5 @@
 import Foundation
+import ImageIO
 
 final class MemoryMirror: SnapshotMirror {
     var data: Data?
@@ -92,6 +93,64 @@ struct TaskStoreChecks {
         precondition(!TaskStore(persistence: TaskPersistence(url: retentionURL)).tasks.contains { $0.id == finished.id })
         precondition(retention.purgeExpired(at: doneAt.addingTimeInterval(200_000 + 259_200)).map(\.id) == [flipped.id])
         print("PASS: completed tasks are deleted for good exactly three days after completion; open and reopened tasks are kept")
+
+        func sampleImage(width: Int, height: Int) -> Data {
+            let context = CGContext(data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+                                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            context.setFillColor(red: 0.2, green: 0.5, blue: 0.8, alpha: 1)
+            context.fill(CGRect(x: 0, y: 0, width: width, height: height))
+            let data = NSMutableData()
+            let destination = CGImageDestinationCreateWithData(data, "public.png" as CFString, 1, nil)!
+            CGImageDestinationAddImage(destination, context.makeImage()!, nil)
+            CGImageDestinationFinalize(destination)
+            return data as Data
+        }
+        let photoRoot = URL.temporaryDirectory.appendingPathComponent("TodosPhotos-\(UUID())")
+        defer { try? FileManager.default.removeItem(at: photoRoot) }
+        let photos = TaskImageStorage(directory: photoRoot.appendingPathComponent("Images"))
+        let big = try photos.save(sampleImage(width: 3000, height: 2000))
+        precondition(photos.exists(big) && big.hasSuffix(".jpg"))
+        precondition(photos.image(big, maxPixels: 4000)!.width == TaskImageStorage.maxStoredPixels)
+        precondition(photos.image(big, maxPixels: 300)!.width <= 300)
+        do { _ = try photos.save(Data("not an image".utf8)); preconditionFailure("garbage data must not be saved") } catch {}
+
+        let photoPersistence = TaskPersistence(url: photoRoot.appendingPathComponent("photos.json"))
+        let photoStore = TaskStore(persistence: photoPersistence, images: photos)
+        let shot = try photos.save(sampleImage(width: 800, height: 600))
+        precondition(photoStore.add(title: "With photo", category: .today, extras: TaskExtras(note: "  Bring the receipt \n", imageFilename: shot)))
+        let withPhoto = photoStore.tasks.last!
+        precondition(withPhoto.note == "Bring the receipt" && withPhoto.imageFilename == shot)
+        precondition(photoStore.add(title: "Blank note", category: .today, extras: TaskExtras(note: "   \n")))
+        precondition(photoStore.tasks.last!.note == nil && photoStore.tasks.last!.imageFilename == nil)
+        let second = try photos.save(sampleImage(width: 400, height: 400))
+        precondition(photoStore.edit(withPhoto.id, title: "With photo", category: .today, extras: TaskExtras(note: "New note", imageFilename: second)))
+        precondition(!photos.exists(shot) && photos.exists(second))
+        precondition(photoStore.edit(withPhoto.id, title: "Still here", category: .today))
+        let kept = photoStore.tasks.first { $0.id == withPhoto.id }!
+        precondition(kept.note == "New note" && kept.imageFilename == second)
+        precondition(TaskStore(persistence: photoPersistence, images: photos).tasks.first { $0.id == withPhoto.id }! == kept)
+        photoStore.delete(kept)
+        precondition(photos.exists(second))
+        photoStore.undoDelete()
+        precondition(photos.exists(second) && photoStore.tasks.contains { $0.id == kept.id })
+        photoStore.delete(photoStore.tasks.first { $0.id == kept.id }!)
+        photoStore.dismissUndo()
+        precondition(!photos.exists(second))
+        let doomed = try photos.save(sampleImage(width: 200, height: 200))
+        precondition(photoStore.add(title: "Finished with photo", category: .today, extras: TaskExtras(imageFilename: doomed)))
+        let doomedTask = photoStore.tasks.last!
+        photoStore.toggle(doomedTask.id, at: doneAt)
+        photoStore.purgeExpired(at: doneAt.addingTimeInterval(259_200))
+        precondition(!photos.exists(doomed) && !photoStore.tasks.contains { $0.id == doomedTask.id })
+        let stray = try photos.save(sampleImage(width: 100, height: 100))
+        let wanted = try photos.save(sampleImage(width: 100, height: 100))
+        precondition(photoStore.add(title: "Keeps its photo", category: .today, extras: TaskExtras(imageFilename: wanted)))
+        _ = TaskStore(persistence: photoPersistence, images: photos)
+        precondition(!photos.exists(stray) && photos.exists(wanted))
+        let bareJSON = try JSONEncoder().encode(TaskItem(title: "Plain", category: .today, order: 0))
+        let plain = try JSONDecoder().decode(TaskItem.self, from: bareJSON)
+        precondition(plain.note == nil && plain.imageFilename == nil)
+        print("PASS: notes are trimmed; photos are downscaled, replaced, kept through undo, and deleted with their task or on purge; stray photos are cleaned up")
 
         print("PASS: starred tasks sort to the top (open before completed), survive edits and restarts, and old files load unstarred")
 
