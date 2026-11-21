@@ -11,10 +11,12 @@ struct TaskRow: View {
     let toggle: () -> Void
     var edit: () -> Void = {}
     var star: () -> Void = {}
+    var viewPhoto: () -> Void = {}
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @Environment(\.todoTheme) private var theme
 
     var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
         HStack(alignment: .center, spacing: 8) {
             Button(action: toggle) {
                 Bead(done: task.isCompleted)
@@ -46,6 +48,25 @@ struct TaskRow: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel("Starred. Tap to unstar \(task.title)")
             }
+        }
+        if let note = task.note {
+            Text(note)
+                .font(.subheadline).foregroundStyle(.secondary).lineLimit(3)
+                .padding(.leading, 52).padding(.trailing, 6)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .contentShape(Rectangle()).onTapGesture(perform: edit)
+        }
+        if let filename = task.imageFilename {
+            Button(action: viewPhoto) {
+                TaskPhotoView(filename: filename)
+                    .frame(maxWidth: .infinity).frame(height: 150)
+                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .overlay { RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(.white.opacity(0.35), lineWidth: 0.75) }
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Photo for \(task.title)")
+            .accessibilityHint("Opens the photo")
+        }
         }
         .padding(.leading, 13).padding(.trailing, task.isStarred ? 10 : 22).padding(.vertical, 13)
         .modifier(GlassTile(tint: task.category.accent))

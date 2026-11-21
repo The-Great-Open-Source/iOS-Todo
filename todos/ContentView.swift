@@ -29,6 +29,7 @@ struct ContentView: View {
     @State private var lastCompletion = Date.distantPast
     @State private var highlightID: UUID?
     @State private var showingAdd = false
+    @State private var viewingPhoto: TaskItem?
     @Namespace private var zoomNamespace
     @ScaledMetric(relativeTo: .title) private var titleSize = 32
 
@@ -141,6 +142,7 @@ struct ContentView: View {
             case .completed: CompletedTasksView(category: category)
             }
         }
+        .fullScreenCover(item: $viewingPhoto) { PhotoViewer(task: $0) }
         .fullScreenCover(isPresented: $showingAdd) {
             TaskEditor(category: category).navigationTransition(.zoom(sourceID: "add", in: zoomNamespace))
         }
@@ -223,6 +225,27 @@ struct ContentView: View {
             if visibleTasks.indices.contains(Int(index)) { toggleStar(visibleTasks[Int(index)]) }
         }
         if args.contains("-demoAddStarred") { try? await Task.sleep(for: .seconds(pause)); store.add(title: "Pay rent", category: category, isStarred: true) }
+        if args.contains("-demoAddRich") {
+            try? await Task.sleep(for: .seconds(pause))
+            let context = CGContext(data: nil, width: 1200, height: 800, bitsPerComponent: 8, bytesPerRow: 0,
+                                    space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            let colors = [CGColor(red: 0.1, green: 0.5, blue: 0.6, alpha: 1), CGColor(red: 0.95, green: 0.6, blue: 0.3, alpha: 1)] as CFArray
+            context.drawLinearGradient(CGGradient(colorsSpace: CGColorSpaceCreateDeviceRGB(), colors: colors, locations: [0, 1])!,
+                                       start: .zero, end: CGPoint(x: 1200, y: 800), options: [])
+            context.setFillColor(CGColor(red: 1, green: 1, blue: 1, alpha: 0.35))
+            context.fillEllipse(in: CGRect(x: 700, y: 300, width: 360, height: 360))
+            let png = NSMutableData()
+            if let destination = CGImageDestinationCreateWithData(png, "public.png" as CFString, 1, nil), let image = context.makeImage() {
+                CGImageDestinationAddImage(destination, image, nil); CGImageDestinationFinalize(destination)
+            }
+            if let name = try? store.images.save(png as Data) {
+                store.add(title: "Plan the trip", category: category, extras: TaskExtras(note: "Book the train first, then the hotel near the old town. Check visa rules.", imageFilename: name))
+            }
+        }
+        if args.contains("-demoEditLast") {
+            try? await Task.sleep(for: .seconds(pause))
+            if let last = visibleTasks.last { sheet = .edit(last) }
+        }
         if args.contains("-demoDelete") { try? await Task.sleep(for: .seconds(pause)); if let first = visibleTasks.first { deleteTask(first) } }
         guard let count = value("-demoComplete") else { return }
         try? await Task.sleep(for: .seconds(value("-demoDelay") ?? 2))
@@ -367,7 +390,7 @@ struct ContentView: View {
         } else {
             List {
                 ForEach(tasks) { task in
-                    TaskRow(task: task, arrived: task.id == highlightID, toggle: { toggleTask(task) }, edit: { sheet = .edit(task) }, star: { toggleStar(task) })
+                    TaskRow(task: task, arrived: task.id == highlightID, toggle: { toggleTask(task) }, edit: { sheet = .edit(task) }, star: { toggleStar(task) }, viewPhoto: { viewingPhoto = task })
                     .listRowBackground(Color.clear)
                     .listRowSeparator(.hidden)
                     .listRowInsets(EdgeInsets(top: 0, leading: 24, bottom: 12, trailing: 24))
