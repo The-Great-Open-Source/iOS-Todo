@@ -31,7 +31,7 @@ final class RewardFeedback {
     func completed(combo: Int, haptics: Bool, sound: Bool) {
         let level = Float(min(combo, 6))
         if haptics {
-            play([tap(0, 0.55 + 0.07 * level, 0.6), tap(0.075, 0.3 + 0.04 * level, 0.3)],
+            play([tap(0, min(1, 0.7 + 0.06 * level), 0.7), tap(0.07, 0.45 + 0.05 * level, 0.35)],
                  fallback: { UIImpactFeedbackGenerator(style: .medium).impactOccurred() })
         }
         if sound { play("combo\(min(max(combo, 1), 8))") }
@@ -70,6 +70,11 @@ final class RewardFeedback {
         if haptics {
             let (events, curves) = hapticPattern(for: milestone)
             play(events, curves: curves, fallback: { UINotificationFeedbackGenerator().notificationOccurred(.success) })
+            // A system "success" buzz on top, at the moment of impact, so the hit is felt even if the
+            // custom pattern is dulled by the phone's settings.
+            DispatchQueue.main.asyncAfter(deadline: .now() + milestone.impactTime) {
+                UINotificationFeedbackGenerator().notificationOccurred(.success)
+            }
         }
         if sound { play("milestone\(milestone.tier)") }
     }
@@ -112,32 +117,38 @@ final class RewardFeedback {
         ], relativeTime: time)
     }
 
-    /// A short roll, a thump when the confetti pops, and a soft decaying rumble.
-    /// Slightly longer and stronger for every tier.
+    /// A drumroll that builds, a hard thump when the colour hits, then a long rumble that fades in steps
+    /// with a pulse for every shockwave and, for the big ones, a shimmer of ticks. It is strong on purpose:
+    /// the celebration plays behind the interface, so the vibration carries much of the feeling.
     private func hapticPattern(for milestone: CompletionMilestone) -> ([CHHapticEvent], [CHHapticParameterCurve]) {
         let tier = milestone.tier
-        let rolls = [1, 2, 3, 4][tier - 1]
-        let span = [0.08, 0.16, 0.22, 0.30][tier - 1]
+        let rolls = [3, 5, 7, 9][tier - 1]
+        let span = milestone.impactTime - 0.07
         var events: [CHHapticEvent] = []
         for k in 0..<rolls {
             let fraction = Double(k) / Double(rolls)
-            events.append(tap(span * (1 - pow(1 - fraction, 1.6)), Float(0.35 + 0.5 * fraction), 0.5))
+            events.append(tap(span * (1 - pow(1 - fraction, 1.6)), Float(0.5 + 0.5 * fraction), 0.6))
         }
-        let thump = span + 0.07
-        events.append(tap(thump, Float(0.75 + 0.08 * Double(tier)), 0.35))
-        let rumbleLength = [0.12, 0.18, 0.26, 0.4][tier - 1]
-        events.append(CHHapticEvent(eventType: .hapticContinuous, parameters: [
-            CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.55),
-            CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.2),
-        ], relativeTime: thump, duration: rumbleLength))
-        let curve = CHHapticParameterCurve(parameterID: .hapticIntensityControl, controlPoints: [
-            .init(relativeTime: 0, value: 1), .init(relativeTime: rumbleLength, value: 0),
-        ], relativeTime: thump)
-        let sparkles = [0, 0, 0, 3][tier - 1]
-        for k in 0..<sparkles {
-            events.append(tap(thump + 0.45 + Double(k) * 0.17, k.isMultiple(of: 3) ? 0.42 : 0.26, 0.95))
+        let thump = milestone.impactTime
+        events.append(tap(thump, 1.0, 0.45))
+        events.append(tap(thump + 0.05, 1.0, 0.9))
+        // The rumble, in four steps that die away.
+        let rumble = [0.6, 1.0, 1.5, 2.4][tier - 1]
+        for (step, level) in [1.0, 0.8, 0.55, 0.3].enumerated() {
+            events.append(CHHapticEvent(eventType: .hapticContinuous, parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: Float(level)),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: Float(0.25 + 0.1 * Double(step))),
+            ], relativeTime: thump + rumble / 4 * Double(step), duration: rumble / 4))
         }
-        return (events, [curve])
+        // One pulse for each shockwave that follows the first.
+        for ring in 1..<[1, 2, 3, 5][tier - 1] {
+            events.append(tap(thump + Double(ring) * 0.28, 0.9, 0.7))
+        }
+        // A shimmer of light ticks as the confetti falls.
+        for k in 0..<[0, 0, 8, 22][tier - 1] {
+            events.append(tap(thump + rumble + 0.1 + Double(k) * 0.14, k.isMultiple(of: 3) ? 0.5 : 0.3, 0.95))
+        }
+        return (events, [])
     }
 
     // MARK: Sound
