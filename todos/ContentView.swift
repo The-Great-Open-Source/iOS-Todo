@@ -65,7 +65,15 @@ struct ContentView: View {
             categoryRow
             tabContent
         }
-        .background { AmbientBackground() }
+        .background {
+            // The celebration lives behind everything, so it never covers or blocks the list.
+            ZStack {
+                AmbientBackground()
+                if let celebration {
+                    CelebrationBackdrop(event: celebration).id(celebration.id)
+                }
+            }
+        }
         .tint(theme.deep)
         .onChange(of: scenePhase) { _, phase in
             if phase == .active {
@@ -110,15 +118,6 @@ struct ContentView: View {
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.25)) { store.dismissUndo() }
         }
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomActions }
-        .overlay {
-            if let celebration {
-                CompletionCelebration(event: celebration) {
-                    withAnimation(.easeOut(duration: 0.2)) { self.celebration = nil }
-                }
-                .id(celebration.id)
-                .transition(.opacity)
-            }
-        }
         .task(id: celebration?.id) {
             guard let current = celebration else { return }
             do { try await Task.sleep(for: .seconds(reduceMotion ? 1.8 : current.milestone.totalDuration)) } catch { return }
@@ -188,6 +187,7 @@ struct ContentView: View {
             withAnimation(reduceMotion ? nil : .easeOut(duration: 0.2)) {
                 celebration = CelebrationEvent(milestone: milestone)
             }
+            AccessibilityNotification.Announcement("\(milestone.rawValue) percent complete. \(milestone.title)").post()
             RewardFeedback.shared.celebrate(milestone, haptics: hapticsEnabled, sound: soundEnabled)
         } else {
             RewardFeedback.shared.completed(combo: combo, haptics: hapticsEnabled, sound: soundEnabled)
