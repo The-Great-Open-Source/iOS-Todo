@@ -34,8 +34,23 @@ struct TaskItem: Identifiable, Codable, Equatable {
     /// Starred tasks always sit above the rest of their list.
     var isStarred = false
 
+    /// A completed task leaves the main list after ten minutes but can still be reopened.
+    static let archiveDelay: TimeInterval = 10 * 60
+    /// Three days after completion a task is deleted for good and cannot be brought back.
+    static let retention: TimeInterval = 3 * 24 * 60 * 60
+
     func isArchived(at date: Date) -> Bool {
-        isCompleted && completedAt.map { date.timeIntervalSince($0) >= 600 } == true
+        isCompleted && completedAt.map { date.timeIntervalSince($0) >= Self.archiveDelay } == true
+    }
+
+    /// When a completed task will be deleted permanently. Nil while it is still open.
+    var deletionDate: Date? {
+        guard isCompleted, let completedAt else { return nil }
+        return completedAt.addingTimeInterval(Self.retention)
+    }
+
+    func isExpired(at date: Date) -> Bool {
+        deletionDate.map { date >= $0 } ?? false
     }
 
     private enum CodingKeys: String, CodingKey {
