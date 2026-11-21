@@ -272,6 +272,17 @@ final class TaskStore {
         return commit(updated)
     }
 
+    /// Permanently deletes completed tasks older than the retention period. There is no undo.
+    /// Returns what was removed so callers can clean up anything stored elsewhere.
+    @discardableResult
+    func purgeExpired(at date: Date = Date()) -> [TaskItem] {
+        let expired = tasks.filter { $0.isExpired(at: date) }
+        guard !expired.isEmpty else { return [] }
+        let ids = Set(expired.map(\.id))
+        guard commit(tasks.filter { !ids.contains($0.id) }) else { return [] }
+        return expired
+    }
+
     func toggleStar(_ id: UUID) {
         guard let index = tasks.firstIndex(where: { $0.id == id }) else { return }
         var updated = tasks

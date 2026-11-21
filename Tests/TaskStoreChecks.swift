@@ -73,6 +73,26 @@ struct TaskStoreChecks {
         legacyJSON.removeValue(forKey: "isStarred")
         let legacyTask = try JSONDecoder().decode(TaskItem.self, from: JSONSerialization.data(withJSONObject: legacyJSON))
         precondition(!legacyTask.isStarred && legacyTask.title == "Old")
+        let retentionURL = URL.temporaryDirectory.appendingPathComponent("TodosRetention-\(UUID()).json")
+        defer { try? FileManager.default.removeItem(at: retentionURL) }
+        let retention = TaskStore(persistence: TaskPersistence(url: retentionURL))
+        let finished = retention.tasks[0], flipped = retention.tasks[1], untouched = retention.tasks[2]
+        let doneAt = Date(timeIntervalSinceReferenceDate: 1_000_000)
+        retention.toggle(finished.id, at: doneAt)
+        retention.toggle(flipped.id, at: doneAt)
+        precondition(finished.deletionDate == nil && retention.tasks.first { $0.id == finished.id }!.deletionDate == doneAt.addingTimeInterval(259_200))
+        precondition(retention.purgeExpired(at: doneAt.addingTimeInterval(259_199)).isEmpty)
+        retention.toggle(flipped.id, at: doneAt)
+        retention.toggle(flipped.id, at: doneAt.addingTimeInterval(200_000))
+        let removed = retention.purgeExpired(at: doneAt.addingTimeInterval(259_200))
+        precondition(removed.map(\.id) == [finished.id])
+        precondition(!retention.tasks.contains { $0.id == finished.id })
+        precondition(retention.tasks.contains { $0.id == untouched.id } && retention.tasks.contains { $0.id == flipped.id })
+        precondition(retention.purgeExpired(at: doneAt.addingTimeInterval(259_200)).isEmpty)
+        precondition(!TaskStore(persistence: TaskPersistence(url: retentionURL)).tasks.contains { $0.id == finished.id })
+        precondition(retention.purgeExpired(at: doneAt.addingTimeInterval(200_000 + 259_200)).map(\.id) == [flipped.id])
+        print("PASS: completed tasks are deleted for good exactly three days after completion; open and reopened tasks are kept")
+
         print("PASS: starred tasks sort to the top (open before completed), survive edits and restarts, and old files load unstarred")
 
         precondition(CategoryIcon.suggest(for: "Groceries") == "cart")
