@@ -10,6 +10,7 @@ final class MemoryMirror: SnapshotMirror {
 @main
 struct TaskStoreChecks {
     @MainActor static func main() throws {
+        VoiceParserChecks.run()
         precondition(CompletionMilestone.crossed(before: 0, after: 1, total: 4) == .quarter)
         precondition(CompletionMilestone.crossed(before: 1, after: 2, total: 4) == .half)
         precondition(CompletionMilestone.crossed(before: 2, after: 3, total: 4) == .threeQuarters)
