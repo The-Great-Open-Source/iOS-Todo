@@ -4,6 +4,8 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-22
+
 ### Added
 - Add tasks by voice. A microphone button beside Add Task listens, understands phrases such as “I have to wash my clothes today evening near 5pm”, and shows the task it understood, with its title, reminder time, list, and star, to confirm or change. Days, times, durations, dates, list names, and importance are recognised without a network connection.
 
@@ -49,6 +51,7 @@ First release.
 - No iCloud sync, widgets, or reminders.
 - Gestures, haptics, VoiceOver, and larger text sizes have had limited hands-on testing; the task logic is covered by the automated checks.
 
-[Unreleased]: https://github.com/The-Great-Open-Source/iOS-Todo/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/The-Great-Open-Source/iOS-Todo/compare/v0.3.0...HEAD
+[0.3.0]: https://github.com/The-Great-Open-Source/iOS-Todo/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/The-Great-Open-Source/iOS-Todo/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/The-Great-Open-Source/iOS-Todo/releases/tag/v0.1.0
