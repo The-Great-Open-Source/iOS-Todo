@@ -13,6 +13,7 @@ A small, native SwiftUI checklist for iPhone built around Liquid Glass. Tasks li
 - Star a task when you add it, or later from its touch-and-hold menu or by tapping its star. Starred tasks always stay at the top of their list; completed tasks still move below the open ones.
 - Touch and hold a tile for Edit or Remove, or use Delete Task in the editor. Removal offers Undo for a few seconds.
 - Add a note and a photo to a task; both appear inside its tile, and tapping the photo opens it full screen.
+- **Add by voice**: tap the microphone beside Add Task and say it naturally, such as “I have to wash my clothes today evening near 5pm”. The app understands the day and time (today, tonight, tomorrow morning, next Monday, in 2 hours, December 5th at 9 am, 5pm), the list (“add it to shopping”), and importance (“urgent”, “high priority”), and leaves just the action as the title. You confirm or fix the title, time, list, and star, then add it, and a time becomes a reminder. The language rules run on the device; speech recognition uses Apple's on-device recognizer where your language supports it.
 - **Remind me** adds the task to Apple's Reminders app with a due time and an alert, so iOS delivers the notification and this app needs none of its own. Completing, editing, or deleting the task updates the reminder. The link is one way: changes made in Reminders are not read back. The app asks for Reminders access the first time you turn this on.
 - Completed tasks leave the list after 10 minutes and stay under **Task options → Completed tasks**, where they can be reopened. Three days after completion they are **deleted for good, with no undo**, along with their photos and reminders. Today never resets at midnight.
 - A new installation starts with four editable starter tasks.
@@ -55,12 +56,12 @@ The task logic has no UI dependencies and is checked by a plain executable, so n
 
 ```sh
 xcrun swiftc todos/Models/TaskItem.swift todos/Models/CompletionMilestone.swift \
-  todos/Models/CategoryIcon.swift todos/Services/TaskImageStorage.swift todos/Services/TaskStore.swift \
-  Tests/TaskStoreChecks.swift -o /tmp/todos-store-checks
+  todos/Models/CategoryIcon.swift todos/Models/VoiceTaskParser.swift todos/Services/TaskImageStorage.swift \
+  todos/Services/TaskStore.swift Tests/VoiceParserChecks.swift Tests/TaskStoreChecks.swift -o /tmp/todos-store-checks
 /tmp/todos-store-checks
 ```
 
-The checks cover validation, ordering, editing, deletion and undo, restart persistence, categories and the three-star limit, icon suggestion, the exact 10-minute archive boundary, celebration thresholds and re-arming, legacy-data migration, corrupt-file recovery, failed writes, and Keychain restore. UI gestures, VoiceOver, larger text, and haptics need hands-on testing on a device.
+The checks cover validation, ordering, editing, deletion and undo, restart persistence, categories and the three-star limit, icon suggestion, the exact 10-minute archive boundary, celebration thresholds and re-arming, spoken sentences turned into title, time, list, and star, legacy-data migration, corrupt-file recovery, failed writes, and Keychain restore. UI gestures, VoiceOver, larger text, and haptics need hands-on testing on a device.
 
 ## Project layout
 
@@ -76,6 +77,7 @@ todos/
     TaskStore.swift          Observable store, atomic JSON persistence, Keychain mirror, 3-day purge
     TaskImageStorage.swift   Downscaled task photos stored as JPEG files
     ReminderService.swift    EventKit link to Apple's Reminders app
+    VoiceDictation.swift     Microphone and speech-to-text
     RewardFeedback.swift     CoreHaptics patterns and synthesised chimes
   Styles/
     GlassStyle.swift         Themes, ambient background, glass tiles and cards, button style
@@ -111,5 +113,6 @@ Debug builds accept a few flags for previewing the interface without tapping thr
 | `-demoAddRich 1`, `-demoEditLast 1` | Add a task with a note, photo, and reminder, or open the editor on the last task |
 | `-demoStar I`, `-demoAddStarred 1` | Star the I-th task, or add a starred one |
 | `-demoOpenCategory 1`, `-demoCategoryName NAME` | Open the new-category sheet, optionally prefilled |
+| `-demoVoice "SENTENCE"` | Open the voice sheet with this sentence already understood |
 | `-demoReminderTest 1` | Exercise the real Reminders store and log the results |
 | `-demoDelay S` | Wait S seconds before acting |

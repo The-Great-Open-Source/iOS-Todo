@@ -4,6 +4,9 @@ All notable changes to this project are documented here. The format follows [Kee
 
 ## [Unreleased]
 
+### Added
+- Add tasks by voice. A microphone button beside Add Task listens, understands phrases such as “I have to wash my clothes today evening near 5pm”, and shows the task it understood, with its title, reminder time, list, and star, to confirm or change. Days, times, durations, dates, list names, and importance are recognised without a network connection.
+
 ## [0.2.0] - 2026-11-21
 
 ### Added
