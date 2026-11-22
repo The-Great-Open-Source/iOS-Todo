@@ -247,6 +247,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Todos listens only while you add a task by voice, so it can turn what you say into a task.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Todos turns your speech into text to create a task. Where your language supports it, this happens on the device.";
 				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "Todos adds the reminders you set to the Reminders app, so Apple’s Reminders can alert you at the right time.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -280,6 +282,8 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Todos listens only while you add a task by voice, so it can turn what you say into a task.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Todos turns your speech into text to create a task. Where your language supports it, this happens on the device.";
 				INFOPLIST_KEY_NSRemindersFullAccessUsageDescription = "Todos adds the reminders you set to the Reminders app, so Apple’s Reminders can alert you at the right time.";
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

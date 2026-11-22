@@ -1,7 +1,7 @@
 import SwiftUI
 
 private enum TaskSheet: Identifiable {
-    case edit(TaskItem), settings, categories, newCategory, completed
+    case edit(TaskItem), settings, categories, newCategory, completed, voice
     var id: String {
         switch self {
         case .edit(let task): task.id.uuidString
@@ -9,6 +9,7 @@ private enum TaskSheet: Identifiable {
         case .categories: "categories"
         case .newCategory: "newCategory"
         case .completed: "completed"
+        case .voice: "voice"
         }
     }
 }
@@ -29,6 +30,7 @@ struct ContentView: View {
     @State private var lastCompletion = Date.distantPast
     @State private var highlightID: UUID?
     @State private var showingAdd = false
+    @State private var voicePreset: String?
     @State private var viewingPhoto: TaskItem?
     @Namespace private var zoomNamespace
     @ScaledMetric(relativeTo: .title) private var titleSize = 32
@@ -139,6 +141,8 @@ struct ContentView: View {
                     if let created { selectCategory(created) }
                 }
             case .completed: CompletedTasksView(category: category)
+            case .voice:
+                VoiceTaskSheet(category: category, onAdded: { selectCategory($0) }, preset: voicePreset)
             }
         }
         .fullScreenCover(item: $viewingPhoto) { PhotoViewer(task: $0) }
@@ -220,6 +224,10 @@ struct ContentView: View {
         }
         let pause = value("-demoDelay") ?? 1.5
         if args.contains("-demoOpenCategory") { try? await Task.sleep(for: .seconds(value("-demoDelay") ?? 1.5)); sheet = .newCategory }
+        if let at = args.firstIndex(of: "-demoVoice"), args.indices.contains(at + 1) {
+            voicePreset = args[at + 1]
+            try? await Task.sleep(for: .seconds(pause)); sheet = .voice
+        }
         if args.contains("-demoOpenAdd") { try? await Task.sleep(for: .seconds(pause)); showingAdd = true }
         if args.contains("-demoAdd") { try? await Task.sleep(for: .seconds(pause)); store.add(title: "Water the plants", category: category) }
         if let index = value("-demoStar") {
@@ -495,15 +503,27 @@ struct ContentView: View {
                 .buttonStyle(.plain).foregroundStyle(.red)
                 .accessibilityHint("Deletes this category and any completed tasks in it. Undo is available afterward.")
             }
-            Button {
-                RewardFeedback.shared.pressed(haptics: hapticsEnabled)
-                showingAdd = true
-            } label: {
-                AddTaskLabel()
+            HStack(spacing: 12) {
+                Button {
+                    RewardFeedback.shared.pressed(haptics: hapticsEnabled)
+                    showingAdd = true
+                } label: {
+                    AddTaskLabel()
+                }
+                .buttonStyle(PrimaryTaskButtonStyle())
+                .matchedTransitionSource(id: "add", in: zoomNamespace)
+                .accessibilityIdentifier("addTaskButton")
+                Button {
+                    RewardFeedback.shared.pressed(haptics: hapticsEnabled)
+                    sheet = .voice
+                } label: {
+                    Image(systemName: "mic.fill").font(.system(size: 20, weight: .medium)).foregroundStyle(.primary)
+                        .frame(width: 62, height: 62)
+                        .glassEffect(.regular.tint(theme.accent.opacity(0.2)).interactive(), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Add a task by voice").accessibilityIdentifier("voiceAddTaskButton")
             }
-            .buttonStyle(PrimaryTaskButtonStyle())
-            .matchedTransitionSource(id: "add", in: zoomNamespace)
-            .accessibilityIdentifier("addTaskButton")
         }
         .animation(reduceMotion ? nil : .spring(duration: 0.4, bounce: 0.2), value: undoToken)
         .padding(.horizontal, 24).padding(.top, 12).padding(.bottom, 16)
